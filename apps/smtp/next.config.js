@@ -7,6 +7,7 @@ const isSentryPropertiesInEnvironment =
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   reactStrictMode: true,
   transpilePackages: [
     "@saleor/apps-otel",

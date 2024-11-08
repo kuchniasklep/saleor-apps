@@ -1,0 +1,31 @@
+steps:
+  # Step 1: Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build',
+      '--build-arg', 'TARGET_APP=$_TARGET_APP',
+      '--build-arg', 'SALEOR_GRAPHQL_URL=$_SALEOR_GRAPHQL_URL',
+      '--build-arg', 'STRAPI_GRAPHQL_URL=$_STRAPI_GRAPHQL_URL',
+      '-t', '$_AR_HOSTNAME/$PROJECT_ID/$_AR_REPO/$_SERVICE_NAME:$COMMIT_SHA',
+      '-t', '$_AR_HOSTNAME/$PROJECT_ID/$_AR_REPO/$_SERVICE_NAME:latest', '.'
+    ]
+    
+  # Step 2: Push the Docker image to Google Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '$_AR_HOSTNAME/$PROJECT_ID/$_AR_REPO/$_SERVICE_NAME']
+
+  # Step 3: Call a deploy webhook
+  - name: 'curlimages/curl'
+    args: [
+      '-X', 'GET',
+      '-H', 'Authorization: Bearer $_WEBHOOK_AUTH',
+      '$_WEBHOOK_URL'
+    ]
+
+timeout: 1200s
+
+options:
+  defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
+
+images:
+  - '$_AR_HOSTNAME/$PROJECT_ID/$_AR_REPO/$_SERVICE_NAME:$COMMIT_SHA'
+  - '$_AR_HOSTNAME/$PROJECT_ID/$_AR_REPO/$_SERVICE_NAME:latest'

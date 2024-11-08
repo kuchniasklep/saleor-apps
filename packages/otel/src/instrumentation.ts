@@ -45,7 +45,7 @@ export const otelSdk = new NodeSDK({
     [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: process.env.ENV,
   }),
   spanProcessor: batchSpanProcessor,
-  // @ts-expect-error - TODO: there are problems with the OTEL types - update OTEL package and fix it
+  // @ts-ignore - TODO: there are problems with the OTEL types - update OTEL package and fix it
   logRecordProcessor: otelLogsProcessor,
   textMapPropagator: new W3CTraceContextPropagator(),
   instrumentations: [
