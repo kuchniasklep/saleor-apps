@@ -9,7 +9,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: kuchniasklep/saleor-smtp
   DEPLOYMENT_NAME: saleor-smtp
-  PACKAGE_NAME: smtp
+  PACKAGE_NAME: saleor-smtp
 
 jobs:
   build:
