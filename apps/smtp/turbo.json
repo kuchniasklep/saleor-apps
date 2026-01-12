@@ -18,7 +18,8 @@
         "AWS_REGION",
         "AWS_SECRET_ACCESS_KEY",
         "DYNAMODB_MAIN_TABLE_NAME",
-        "REDIS_URL"
+        "REDIS_URL",
+        "DEVELOPMENT_OUTPUT"
       ]
     }
   }

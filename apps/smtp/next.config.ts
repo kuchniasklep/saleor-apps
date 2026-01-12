@@ -2,6 +2,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 import { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  ...(process.env.DEVELOPMENT_OUTPUT ? {} : { output: "standalone" }),
   reactStrictMode: true,
   transpilePackages: [
     "@saleor/apps-otel",
