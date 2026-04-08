@@ -1,5 +1,17 @@
 # @saleor/apps-shared
 
+## 1.14.3
+
+### Patch Changes
+
+- 3ecde04: Updated @saleor/app-sdk to v1.7.1
+
+## 1.14.2
+
+### Patch Changes
+
+- f0d36e14: Updated `semver` package version
+
 ## 1.14.1
 
 ### Patch Changes

@@ -1,14 +1,16 @@
 import { TRPCError } from "@trpc/server";
 
+import { PageTypesDataDocument } from "../../../generated/graphql";
 import { WebhookActivityTogglerService } from "../../domain/WebhookActivityToggler.service";
 import { algoliaCredentialsVerifier } from "../../lib/algolia/algolia-credentials-verifier";
 import { createLogger } from "../../lib/logger";
 import { createSettingsManager } from "../../lib/metadata";
 import { createTraceEffect } from "../../lib/trace-effect";
+import { SearchProblemReporter } from "../app-problems";
 import { protectedClientProcedure } from "../trpc/protected-client-procedure";
 import { router } from "../trpc/trpc-server";
 import { AppConfigMetadataManager } from "./app-config-metadata-manager";
-import { AppConfigurationSchema, FieldsConfigSchema } from "./configuration";
+import { AppConfigurationSchema, FieldsConfigSchema, PageTypesFilterSchema } from "./configuration";
 import { fetchLegacyConfiguration } from "./legacy-configuration";
 
 const logger = createLogger("configuration.router");
@@ -86,6 +88,10 @@ export const configurationRouter = router({
         await webhooksToggler.enableOwnWebhooks();
 
         logger.info("Webhooks enabled");
+
+        const problemReporter = new SearchProblemReporter(ctx.apiClient);
+
+        await problemReporter.clearAuthProblems();
       } catch (e) {
         logger.warn("Failed to check Algolia credentials", {
           error: e,
@@ -110,6 +116,64 @@ export const configurationRouter = router({
       });
 
       config.setFieldsMapping(input.enabledAlgoliaFields);
+
+      await traceSetMetadata(() => configManager.set(config, ctx.saleorApiUrl), {
+        saleorApiUrl: ctx.saleorApiUrl,
+      });
+    }),
+  setPageFieldsMappingConfig: protectedClientProcedure
+    .input(FieldsConfigSchema)
+    .mutation(async ({ ctx, input }) => {
+      const settingsManager = createSettingsManager(ctx.apiClient, ctx.appId);
+      const configManager = new AppConfigMetadataManager(settingsManager);
+
+      const config = await traceGetMetadata(() => configManager.get(ctx.saleorApiUrl), {
+        saleorApiUrl: ctx.saleorApiUrl,
+      });
+
+      config.setPageFieldsMapping(input.enabledAlgoliaFields);
+
+      await traceSetMetadata(() => configManager.set(config, ctx.saleorApiUrl), {
+        saleorApiUrl: ctx.saleorApiUrl,
+      });
+    }),
+  getPageTypes: protectedClientProcedure.query(async ({ ctx }) => {
+    const pageTypes: Array<{ id: string; name: string; slug: string }> = [];
+    let hasNextPage = true;
+    let after: string | undefined;
+
+    while (hasNextPage) {
+      const { data } = await ctx.apiClient
+        .query(PageTypesDataDocument, { first: 100, after })
+        .toPromise();
+
+      const edges = data?.pageTypes?.edges ?? [];
+
+      for (const edge of edges) {
+        pageTypes.push({
+          id: edge.node.id,
+          name: edge.node.name,
+          slug: edge.node.slug,
+        });
+      }
+
+      hasNextPage = data?.pageTypes?.pageInfo.hasNextPage ?? false;
+      after = data?.pageTypes?.pageInfo.endCursor ?? undefined;
+    }
+
+    return pageTypes;
+  }),
+  setPageTypesFilter: protectedClientProcedure
+    .input(PageTypesFilterSchema)
+    .mutation(async ({ ctx, input }) => {
+      const settingsManager = createSettingsManager(ctx.apiClient, ctx.appId);
+      const configManager = new AppConfigMetadataManager(settingsManager);
+
+      const config = await traceGetMetadata(() => configManager.get(ctx.saleorApiUrl), {
+        saleorApiUrl: ctx.saleorApiUrl,
+      });
+
+      config.setPageTypesFilter(input.pageTypeIds);
 
       await traceSetMetadata(() => configManager.set(config, ctx.saleorApiUrl), {
         saleorApiUrl: ctx.saleorApiUrl,

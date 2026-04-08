@@ -1,10 +1,10 @@
 import { EditorJsPlaintextRenderer } from "@saleor/apps-shared/editor-js-plaintext-renderer";
 
 import {
-  ProductAttributesDataFragment,
-  ProductVariantWebhookPayloadFragment,
+  type ProductAttributesDataFragment,
+  type ProductVariantWebhookPayloadFragment,
 } from "../../../generated/graphql";
-import { AlgoliaRootFields, AlgoliaRootFieldsKeys } from "../algolia-fields";
+import { type AlgoliaRootFields, AlgoliaRootFieldsKeys } from "../algolia-fields";
 import { isNotNil } from "../isNotNil";
 import { safeParseJson } from "../safe-parse-json";
 import { metadataToAlgoliaAttribute } from "./metadata-to-algolia-attribute";
@@ -82,7 +82,7 @@ const isAttributeValueBooleanType = (
  *  Returns object with a key being attribute name and value of all attribute values
  *  separated by comma. If no value is selected, an empty string will be used instead.
  */
-const mapSelectedAttributesToRecord = (attr: ProductAttributesDataFragment) => {
+export const mapSelectedAttributesToRecord = (attr: ProductAttributesDataFragment) => {
   if (!attr.attribute.name?.length) {
     return undefined;
   }
@@ -177,6 +177,9 @@ export function productAndVariantToAlgolia({
     description: safeParseJson(product.description),
     descriptionPlaintext: EditorJsPlaintextRenderer({ stringData: product.description ?? "" }),
     slug: product.slug,
+    productTypeId: product.productType?.id ?? null,
+    categoryId: product.category?.id ?? null,
+    categorySlug: product.category?.slug ?? null,
     thumbnail: product.thumbnail?.url,
     /**
      * Deprecated
@@ -258,6 +261,9 @@ export function productAndVariantToAlgolia({
 export function productAndVariantToObjectID({
   product,
   ...variant
-}: ProductVariantWebhookPayloadFragment) {
+}: {
+  id: string;
+  product: { id: string };
+}) {
   return `${product.id}_${variant.id}`;
 }

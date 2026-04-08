@@ -8,6 +8,7 @@ fragment OrderDetails on Order {
   redirectUrl
   channel {
     slug
+    name
   }
   metadata {
     key
@@ -55,10 +56,6 @@ fragment OrderDetails on Order {
   }
   lines {
     id
-    digitalContentUrl {
-      id
-      url
-    }
     isShippingRequired
     metadata {
       key
@@ -74,10 +71,10 @@ fragment OrderDetails on Order {
     translatedVariantName
     productSku
     variant {
-      preorder{
+      preorder {
         endDate
       }
-      weight{
+      weight {
         unit
         value
       }
@@ -108,11 +105,10 @@ fragment OrderDetails on Order {
             id
             name
             slug
-            file{
+            file {
               url
               contentType
             }
-            
           }
         }
       }
@@ -159,7 +155,7 @@ fragment OrderDetails on Order {
     unitDiscountReason
     unitDiscountType
     unitDiscountValue
-    undiscountedUnitPrice{
+    undiscountedUnitPrice {
       gross {
         currency
         amount

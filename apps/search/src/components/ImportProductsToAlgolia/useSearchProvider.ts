@@ -1,8 +1,9 @@
-import { inferProcedureOutput } from "@trpc/server";
+import { type inferProcedureOutput } from "@trpc/server";
 import { useMemo } from "react";
 
 import { AlgoliaSearchProvider } from "../../lib/algolia/algoliaSearchProvider";
-import { AppRouter } from "../../modules/trpc/trpc-app-router";
+import { AlgoliaPageFieldsKeys } from "../../lib/algolia-fields";
+import type { AppRouter } from "../../modules/trpc/trpc-app-router";
 
 type AlgoliaConfiguration = inferProcedureOutput<AppRouter["configuration"]["getConfig"]>;
 
@@ -17,12 +18,16 @@ export const useSearchProvider = (algoliaConfiguration?: AlgoliaConfiguration) =
       apiKey: algoliaConfiguration.appConfig.secretKey,
       indexNamePrefix: algoliaConfiguration.appConfig.indexNamePrefix,
       enabledKeys: algoliaConfiguration.fieldsMapping.enabledAlgoliaFields,
+      pageEnabledKeys: algoliaConfiguration.pageFieldsMapping?.enabledAlgoliaFields ?? [
+        ...AlgoliaPageFieldsKeys,
+      ],
     });
   }, [
     algoliaConfiguration?.appConfig?.appId,
     algoliaConfiguration?.appConfig?.indexNamePrefix,
     algoliaConfiguration?.appConfig?.secretKey,
     algoliaConfiguration?.fieldsMapping?.enabledAlgoliaFields,
+    algoliaConfiguration?.pageFieldsMapping?.enabledAlgoliaFields,
   ]);
 
   return searchProvider;

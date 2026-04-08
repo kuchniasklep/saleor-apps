@@ -1,5 +1,123 @@
 # saleor-app-search
 
+## 1.28.1
+
+### Patch Changes
+
+- 622d13c: Updated GraphQL schema to 3.23
+- Updated dependencies [622d13c]
+  - @saleor/webhook-utils@0.2.10
+
+## 1.28.0
+
+### Minor Changes
+
+- 233f044: Added Saleor Pages indexing. Now user can select which page types are going to be synced with Algolia. Additionally some larger attributes can be marked not to be synced
+
+## 1.27.0
+
+### Minor Changes
+
+- 9e703e6: Added category indexing to Algolia. Categories are now synced via `CATEGORY_CREATED`, `CATEGORY_UPDATED`, and `CATEGORY_DELETED` webhooks, and included in the bulk import flow.
+
+  Each category object in Algolia contains: `name`, `slug`, `level`, `ancestors` (flat array of `{id, name, slug}`), `metadata`, and `_type: "category"`. Categories are stored in a dedicated `<prefix>.categories` index with faceting on `level`, `ancestors`, and `metadata`.
+
+  Also enriched product objects with `productTypeId`, `categoryId`, and `categorySlug` fields, and added corresponding faceting/search attributes to product indices.
+
+### Patch Changes
+
+- 3ecde04: Updated @saleor/app-sdk to v1.7.1
+- b57266c: Attach Saleor domain to Sentry events for better aggregation
+- Updated dependencies [3ecde04]
+  - @saleor/app-problems@1.0.2
+  - @saleor/apps-logger@1.6.4
+  - @saleor/apps-otel@2.4.1
+  - @saleor/react-hook-form-macaw@0.2.17
+  - @saleor/sentry-utils@0.2.6
+  - @saleor/apps-shared@1.14.3
+  - @saleor/apps-ui@1.3.3
+  - @saleor/webhook-utils@0.2.9
+
+## 1.26.0
+
+### Minor Changes
+
+- fab1f78: Webhook responses now return plain text response to Saleor, so it should be properly displayed in dashboard "webhook errors". Previously app was returning `{"message": "..."}` which is not recognized shape officially by Saleor nor Dashboard - it was rendered like text anyway.
+
+### Patch Changes
+
+- 0484f64: Add error cause for verifyJwt failures on tRPC
+- 8cc005b: Updated aws-sdk packages and dynamodb-toolbox to latest versions
+- Updated dependencies [8cc005b]
+  - @saleor/app-problems@1.0.1
+
+## 1.25.0
+
+### Minor Changes
+
+- 5b055b15: Added support for App Problems API. Now App will report problems that occur during its operations. These problems will be visible on the Dashboard.
+
+### Patch Changes
+
+- ddfa9593: Changed how generated graphql->typescript types work. Now only types that are directly or indirectly connected to written documents (mutations, queries) are generated
+- Updated dependencies [ddfa9593]
+  - @saleor/webhook-utils@0.2.8
+
+## 1.24.13
+
+### Patch Changes
+
+- d9bb00f5: GraphQL schema has been refreshed to use latest 3.22 (this updates schema but does not change which APIs are executed)
+- c1cbffb4: Applied "consistent imports" rule from ESLint to ensure type-only imports are marked with `import type` clause. This should improve tree shaking and reduce side effects
+- dec95470: Removed nested graphql.schema files for each app/package and added root schema. Now all packages have symlink pointing to the same file.
+- Updated dependencies [f0d36e14]
+- Updated dependencies [dec95470]
+  - @saleor/webhook-utils@0.2.7
+  - @saleor/apps-shared@1.14.2
+  - @saleor/apps-logger@1.6.3
+  - @saleor/apps-otel@2.4.0
+  - @saleor/react-hook-form-macaw@0.2.16
+  - @saleor/sentry-utils@0.2.5
+  - @saleor/apps-ui@1.3.2
+
+## 1.24.12
+
+### Patch Changes
+
+- d7ce7f67: Added client-side error capturing so client exceptions are reported to Sentry.
+
+## 1.24.11
+
+### Patch Changes
+
+- e7f70688: Fixed Search app crashes, due to accessing env variable previously marked as server side only on frontend (`ALGOLIA_TIMEOUT_MS`)
+
+## 1.24.10
+
+### Patch Changes
+
+- 07057788: Update DynamoDB/AWS & Toolbox dependencies
+
+## 1.24.9
+
+### Patch Changes
+
+- d5d7a4fe: Introduced lib t3-oss/env, which adds build-time env variables validation. Now all env variables are statically declared and exposed type-safe way
+- 6eb71d91: Removed legacy SaleorCloudAPL initialization. This APL is deprecated and will be removed in app-sdk. Apps can no longer use it. This is not marked as a major change, because this API is private to Saleor Cloud
+- 6e5f69c5: Added max DynamoDB connection and request limits (2s for connection, 5s for request), so in case of downtime, app will terminate earlier
+
+## 1.24.8
+
+### Patch Changes
+
+- 560c3de4: Added logging to DynamoDB APL for better debugging and error visibility.
+
+## 1.24.7
+
+### Patch Changes
+
+- 2a4f27ad: Fixed how AWS sdk is initialized by explicitly passing credentials. This is caused by Vercel issue, which started to implicitly override some of our credentials by injecting their own.
+
 ## 1.24.6
 
 ### Patch Changes

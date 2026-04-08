@@ -31,6 +31,7 @@ export default {
     },
   ],
   words: [
+    "retryable",
     "atobarai",
     "avalara",
     "avatax",
@@ -79,6 +80,9 @@ export default {
     "claude",
     "SEPA",
     "mailpit",
+    "Neue",
+    "Segoe",
+    "Undiscounted",
   ],
   language: "en-US",
   useGitignore: true,

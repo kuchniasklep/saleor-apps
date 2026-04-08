@@ -11,19 +11,16 @@ import { mockedGraphqlClient } from "@/__tests__/mocks/graphql-client";
 import { mockedSaleorApiUrl } from "@/__tests__/mocks/saleor/mocked-saleor-api-url";
 import { mockedSaleorAppId } from "@/__tests__/mocks/saleor/mocked-saleor-app-id";
 import { mockedFulfillmentTrackingNumberUpdatedEvent } from "@/__tests__/mocks/saleor-events/mocked-fulfillment-tracking-number-updated-event";
+import { InvalidEventValidationError } from "@/app/api/webhooks/saleor/use-case-errors";
 import { createAtobaraiFulfillmentReportSuccessResponse } from "@/modules/atobarai/api/atobarai-fulfillment-report-success-response";
 import {
   AtobaraiApiClientFulfillmentReportError,
-  IAtobaraiApiClientFactory,
+  type IAtobaraiApiClientFactory,
 } from "@/modules/atobarai/api/types";
-import { IOrderNoteService } from "@/modules/saleor/order-note-service";
+import { type IOrderNoteService } from "@/modules/saleor/order-note-service";
 import { TransactionRecordRepoError } from "@/modules/transactions-recording/types";
 
-import {
-  AppIsNotConfiguredResponse,
-  BrokenAppResponse,
-  MalformedRequestResponse,
-} from "../saleor-webhook-responses";
+import { AppIsNotConfiguredResponse, BrokenAppResponse } from "../saleor-webhook-responses";
 import { FulfillmentTrackingNumberUpdatedUseCase } from "./use-case";
 import { FulfillmentTrackingNumberUpdatedUseCaseResponse } from "./use-case-response";
 
@@ -164,7 +161,7 @@ describe("FulfillmentTrackingNumberUpdatedUseCase", () => {
     expect(result._unsafeUnwrapErr()).toBeInstanceOf(AppIsNotConfiguredResponse);
   });
 
-  it("should return MalformedRequestResponse when fulfillment is missing", async () => {
+  it("should return InvalidEventValidationError when fulfillment is missing", async () => {
     const useCase = new FulfillmentTrackingNumberUpdatedUseCase({
       appConfigRepo: mockedAppConfigRepo,
       atobaraiApiClientFactory,
@@ -185,10 +182,20 @@ describe("FulfillmentTrackingNumberUpdatedUseCase", () => {
       graphqlClient: mockedGraphqlClient,
     });
 
-    expect(result._unsafeUnwrapErr()).toBeInstanceOf(MalformedRequestResponse);
+    // @ts-expect-error we expect Failure which has error
+    expect(result._unsafeUnwrap().error.message).toMatchInlineSnapshot(`
+      "Fulfillment tracking number is missing
+      Failed to parse Saleor event"
+    `);
+    expect(result._unsafeUnwrap().statusCode).toBe(200);
+    expect(await result._unsafeUnwrap().getResponse().json()).toMatchInlineSnapshot(`
+      {
+        "message": "Fulfillment tracking number is missing",
+      }
+    `);
   });
 
-  it("should return MalformedRequestResponse when tracking number is missing", async () => {
+  it("should return InvalidEventValidationError when tracking number is missing", async () => {
     const useCase = new FulfillmentTrackingNumberUpdatedUseCase({
       appConfigRepo: mockedAppConfigRepo,
       atobaraiApiClientFactory,
@@ -212,10 +219,12 @@ describe("FulfillmentTrackingNumberUpdatedUseCase", () => {
       graphqlClient: mockedGraphqlClient,
     });
 
-    expect(result._unsafeUnwrapErr()).toBeInstanceOf(MalformedRequestResponse);
+    // @ts-expect-error - we expect Failure response
+    expect(result._unsafeUnwrap().error).toBeInstanceOf(InvalidEventValidationError);
+    expect(result._unsafeUnwrap().statusCode).toBe(200);
   });
 
-  it("should return MalformedRequestResponse when order transactions are missing", async () => {
+  it("should return InvalidEventValidationError when order transactions are missing", async () => {
     const useCase = new FulfillmentTrackingNumberUpdatedUseCase({
       appConfigRepo: mockedAppConfigRepo,
       atobaraiApiClientFactory,
@@ -240,10 +249,16 @@ describe("FulfillmentTrackingNumberUpdatedUseCase", () => {
       graphqlClient: mockedGraphqlClient,
     });
 
-    expect(result._unsafeUnwrapErr()).toBeInstanceOf(MalformedRequestResponse);
+    // @ts-expect-error - we expect Failure response
+    expect(result._unsafeUnwrap().error).toBeInstanceOf(InvalidEventValidationError);
+    expect(result._unsafeUnwrap().statusCode).toBe(200);
   });
 
-  it("should return MalformedRequestResponse when multiple transactions are found", async () => {
+  it("should return InvalidEventValidationError and add order note when multiple completed transactions are found", async () => {
+    const addOrderNoteSpy = vi
+      .spyOn(mockedOrderNoteService, "addOrderNote")
+      .mockResolvedValue(ok({ noteId: "note-123" }));
+
     const useCase = new FulfillmentTrackingNumberUpdatedUseCase({
       appConfigRepo: mockedAppConfigRepo,
       atobaraiApiClientFactory,
@@ -260,6 +275,7 @@ describe("FulfillmentTrackingNumberUpdatedUseCase", () => {
         transactions: [
           {
             pspReference: "psp-ref-123",
+            events: [{ type: "CHARGE_SUCCESS" as const }],
             createdBy: {
               __typename: "App" as const,
               id: mockedSaleorAppId,
@@ -267,6 +283,7 @@ describe("FulfillmentTrackingNumberUpdatedUseCase", () => {
           },
           {
             pspReference: "psp-ref-456",
+            events: [{ type: "AUTHORIZATION_SUCCESS" as const }],
             createdBy: {
               __typename: "App" as const,
               id: mockedSaleorAppId,
@@ -283,10 +300,129 @@ describe("FulfillmentTrackingNumberUpdatedUseCase", () => {
       graphqlClient: mockedGraphqlClient,
     });
 
-    expect(result._unsafeUnwrapErr()).toBeInstanceOf(MalformedRequestResponse);
+    // @ts-expect-error - we expect Failure response
+    expect(result._unsafeUnwrap().error).toBeInstanceOf(InvalidEventValidationError);
+    expect(result._unsafeUnwrap().statusCode).toBe(200);
+
+    expect(addOrderNoteSpy).toHaveBeenCalledWith({
+      orderId: mockedFulfillmentTrackingNumberUpdatedEvent.order.id,
+      message:
+        "NP Atobarai skipped fulfillment reporting: Multiple completed transactions found for the order",
+    });
   });
 
-  it("should return MalformedRequestResponse when transaction was not created by an app", async () => {
+  it("should succeed when multiple transactions exist but only one is completed", async () => {
+    const mockFulfillmentResponse = createAtobaraiFulfillmentReportSuccessResponse({
+      results: [
+        {
+          np_transaction_id: mockedAtobaraiTransactionId,
+        },
+      ],
+    });
+
+    vi.spyOn(mockedAtobaraiApiClient, "reportFulfillment").mockResolvedValue(
+      ok(mockFulfillmentResponse),
+    );
+
+    vi.spyOn(mockedAppConfigRepo, "getChannelConfig").mockResolvedValue(ok(mockedAppChannelConfig));
+    vi.spyOn(mockedOrderNoteService, "addOrderNote").mockResolvedValue(ok({ noteId: "note-123" }));
+
+    const useCase = new FulfillmentTrackingNumberUpdatedUseCase({
+      appConfigRepo: mockedAppConfigRepo,
+      atobaraiApiClientFactory,
+      transactionRecordRepo: new MockedTransactionRecordRepo(),
+      orderNoteServiceFactory() {
+        return mockedOrderNoteService;
+      },
+    });
+
+    const event = {
+      ...mockedFulfillmentTrackingNumberUpdatedEvent,
+      order: {
+        ...mockedFulfillmentTrackingNumberUpdatedEvent.order,
+        transactions: [
+          {
+            pspReference: "ghost-psp-ref",
+            events: [{ type: "CHARGE_FAILURE" as const }],
+            createdBy: {
+              __typename: "App" as const,
+              id: mockedSaleorAppId,
+            },
+          },
+          {
+            pspReference: mockedAtobaraiTransactionId,
+            events: [{ type: "CHARGE_SUCCESS" as const }],
+            createdBy: {
+              __typename: "App" as const,
+              id: mockedSaleorAppId,
+            },
+          },
+        ],
+      },
+    };
+
+    const result = await useCase.execute({
+      appId: mockedSaleorAppId,
+      saleorApiUrl: mockedSaleorApiUrl,
+      event,
+      graphqlClient: mockedGraphqlClient,
+    });
+
+    expect(result._unsafeUnwrap()).toBeInstanceOf(
+      FulfillmentTrackingNumberUpdatedUseCaseResponse.Success,
+    );
+  });
+
+  it("should return InvalidEventValidationError and add order note when no completed transactions exist", async () => {
+    const addOrderNoteSpy = vi
+      .spyOn(mockedOrderNoteService, "addOrderNote")
+      .mockResolvedValue(ok({ noteId: "note-123" }));
+
+    const useCase = new FulfillmentTrackingNumberUpdatedUseCase({
+      appConfigRepo: mockedAppConfigRepo,
+      atobaraiApiClientFactory,
+      transactionRecordRepo: new MockedTransactionRecordRepo(),
+      orderNoteServiceFactory() {
+        return mockedOrderNoteService;
+      },
+    });
+
+    const event = {
+      ...mockedFulfillmentTrackingNumberUpdatedEvent,
+      order: {
+        ...mockedFulfillmentTrackingNumberUpdatedEvent.order,
+        transactions: [
+          {
+            pspReference: "ghost-psp-ref",
+            events: [{ type: "CHARGE_FAILURE" as const }],
+            createdBy: {
+              __typename: "App" as const,
+              id: mockedSaleorAppId,
+            },
+          },
+        ],
+      },
+    };
+
+    const result = await useCase.execute({
+      appId: mockedSaleorAppId,
+      saleorApiUrl: mockedSaleorApiUrl,
+      event,
+      graphqlClient: mockedGraphqlClient,
+    });
+
+    // @ts-expect-error - we expect Failure response
+    expect(result._unsafeUnwrap().error).toBeInstanceOf(InvalidEventValidationError);
+    expect(result._unsafeUnwrap().statusCode).toBe(200);
+
+    expect(addOrderNoteSpy).toHaveBeenCalledWith({
+      orderId: mockedFulfillmentTrackingNumberUpdatedEvent.order.id,
+      message:
+        "NP Atobarai skipped fulfillment reporting: No completed transactions found for the order",
+    });
+  });
+
+  it("should return InvalidEventValidationError when transaction was not created by an app", async () => {
     const useCase = new FulfillmentTrackingNumberUpdatedUseCase({
       appConfigRepo: mockedAppConfigRepo,
       atobaraiApiClientFactory,
@@ -303,6 +439,7 @@ describe("FulfillmentTrackingNumberUpdatedUseCase", () => {
         transactions: [
           {
             pspReference: "psp-ref-123",
+            events: [{ type: "CHARGE_SUCCESS" as const }],
             createdBy: {
               __typename: "User" as const,
             },
@@ -318,10 +455,12 @@ describe("FulfillmentTrackingNumberUpdatedUseCase", () => {
       graphqlClient: mockedGraphqlClient,
     });
 
-    expect(result._unsafeUnwrapErr()).toBeInstanceOf(MalformedRequestResponse);
+    // @ts-expect-error - we expect Failure response
+    expect(result._unsafeUnwrap().error).toBeInstanceOf(InvalidEventValidationError);
+    expect(result._unsafeUnwrap().statusCode).toBe(200);
   });
 
-  it("should return MalformedRequestResponse when transaction was created by different app", async () => {
+  it("should return InvalidEventValidationError when transaction was created by different app", async () => {
     const useCase = new FulfillmentTrackingNumberUpdatedUseCase({
       appConfigRepo: mockedAppConfigRepo,
       atobaraiApiClientFactory,
@@ -338,6 +477,7 @@ describe("FulfillmentTrackingNumberUpdatedUseCase", () => {
         transactions: [
           {
             pspReference: "psp-ref-123",
+            events: [{ type: "CHARGE_SUCCESS" as const }],
             createdBy: {
               __typename: "App" as const,
               id: "different-app-id",
@@ -354,7 +494,161 @@ describe("FulfillmentTrackingNumberUpdatedUseCase", () => {
       graphqlClient: mockedGraphqlClient,
     });
 
-    expect(result._unsafeUnwrapErr()).toBeInstanceOf(MalformedRequestResponse);
+    // @ts-expect-error - we expect Failure response
+    expect(result._unsafeUnwrap().error).toBeInstanceOf(InvalidEventValidationError);
+  });
+
+  it("should skip when no completed transactions are owned by this app (single foreign transaction)", async () => {
+    const addOrderNoteSpy = vi
+      .spyOn(mockedOrderNoteService, "addOrderNote")
+      .mockResolvedValue(ok({ noteId: "note-123" }));
+
+    const useCase = new FulfillmentTrackingNumberUpdatedUseCase({
+      appConfigRepo: mockedAppConfigRepo,
+      atobaraiApiClientFactory,
+      transactionRecordRepo: new MockedTransactionRecordRepo(),
+      orderNoteServiceFactory() {
+        return mockedOrderNoteService;
+      },
+    });
+
+    const event = {
+      ...mockedFulfillmentTrackingNumberUpdatedEvent,
+      order: {
+        ...mockedFulfillmentTrackingNumberUpdatedEvent.order,
+        transactions: [
+          {
+            pspReference: "psp-ref-123",
+            events: [{ type: "CHARGE_SUCCESS" as const }],
+            createdBy: {
+              __typename: "App" as const,
+              id: "different-app-id",
+            },
+          },
+        ],
+      },
+    };
+
+    const result = await useCase.execute({
+      appId: mockedSaleorAppId,
+      saleorApiUrl: mockedSaleorApiUrl,
+      event,
+      graphqlClient: mockedGraphqlClient,
+    });
+
+    // @ts-expect-error - we expect Failure response
+    expect(result._unsafeUnwrap().error).toBeInstanceOf(InvalidEventValidationError);
+    expect(result._unsafeUnwrap().statusCode).toBe(200);
+    expect(addOrderNoteSpy).not.toHaveBeenCalled();
+  });
+
+  it("should skip when no completed transactions are owned by this app (multiple foreign transactions)", async () => {
+    const addOrderNoteSpy = vi
+      .spyOn(mockedOrderNoteService, "addOrderNote")
+      .mockResolvedValue(ok({ noteId: "note-123" }));
+
+    const useCase = new FulfillmentTrackingNumberUpdatedUseCase({
+      appConfigRepo: mockedAppConfigRepo,
+      atobaraiApiClientFactory,
+      transactionRecordRepo: new MockedTransactionRecordRepo(),
+      orderNoteServiceFactory() {
+        return mockedOrderNoteService;
+      },
+    });
+
+    const event = {
+      ...mockedFulfillmentTrackingNumberUpdatedEvent,
+      order: {
+        ...mockedFulfillmentTrackingNumberUpdatedEvent.order,
+        transactions: [
+          {
+            pspReference: "psp-ref-123",
+            events: [{ type: "CHARGE_SUCCESS" as const }],
+            createdBy: {
+              __typename: "App" as const,
+              id: "different-app-id",
+            },
+          },
+          {
+            pspReference: "psp-ref-456",
+            events: [{ type: "AUTHORIZATION_SUCCESS" as const }],
+            createdBy: {
+              __typename: "App" as const,
+              id: "another-app-id",
+            },
+          },
+        ],
+      },
+    };
+
+    const result = await useCase.execute({
+      appId: mockedSaleorAppId,
+      saleorApiUrl: mockedSaleorApiUrl,
+      event,
+      graphqlClient: mockedGraphqlClient,
+    });
+
+    // @ts-expect-error - we expect Failure response
+    expect(result._unsafeUnwrap().error).toBeInstanceOf(InvalidEventValidationError);
+    expect(result._unsafeUnwrap().statusCode).toBe(200);
+    expect(addOrderNoteSpy).not.toHaveBeenCalled();
+  });
+
+  it("should return error when multiple completed transactions exist and at least one is owned by this app", async () => {
+    const addOrderNoteSpy = vi
+      .spyOn(mockedOrderNoteService, "addOrderNote")
+      .mockResolvedValue(ok({ noteId: "note-123" }));
+
+    const useCase = new FulfillmentTrackingNumberUpdatedUseCase({
+      appConfigRepo: mockedAppConfigRepo,
+      atobaraiApiClientFactory,
+      transactionRecordRepo: new MockedTransactionRecordRepo(),
+      orderNoteServiceFactory() {
+        return mockedOrderNoteService;
+      },
+    });
+
+    const event = {
+      ...mockedFulfillmentTrackingNumberUpdatedEvent,
+      order: {
+        ...mockedFulfillmentTrackingNumberUpdatedEvent.order,
+        transactions: [
+          {
+            pspReference: "psp-ref-123",
+            events: [{ type: "CHARGE_SUCCESS" as const }],
+            createdBy: {
+              __typename: "App" as const,
+              id: mockedSaleorAppId,
+            },
+          },
+          {
+            pspReference: "psp-ref-456",
+            events: [{ type: "AUTHORIZATION_SUCCESS" as const }],
+            createdBy: {
+              __typename: "App" as const,
+              id: "different-app-id",
+            },
+          },
+        ],
+      },
+    };
+
+    const result = await useCase.execute({
+      appId: mockedSaleorAppId,
+      saleorApiUrl: mockedSaleorApiUrl,
+      event,
+      graphqlClient: mockedGraphqlClient,
+    });
+
+    // @ts-expect-error - we expect Failure response
+    expect(result._unsafeUnwrap().error).toBeInstanceOf(InvalidEventValidationError);
+    expect(result._unsafeUnwrap().statusCode).toBe(200);
+
+    expect(addOrderNoteSpy).toHaveBeenCalledWith({
+      orderId: mockedFulfillmentTrackingNumberUpdatedEvent.order.id,
+      message:
+        "NP Atobarai skipped fulfillment reporting: Multiple completed transactions found for the order",
+    });
   });
 
   it("should return BrokenAppResponse when transactionRecordRepo fails to create transaction", async () => {
@@ -460,5 +754,77 @@ describe("FulfillmentTrackingNumberUpdatedUseCase", () => {
         rejectMultipleResults: true,
       },
     );
+  });
+
+  it("should return InvalidEventValidationError when private metadata contains invalid shipping company code", async () => {
+    const invalidPDCompanyCode = "INVALID_CODE";
+
+    const eventWithInvalidPDCompanyCode = {
+      ...mockedFulfillmentTrackingNumberUpdatedEvent,
+      fulfillment: {
+        ...mockedFulfillmentTrackingNumberUpdatedEvent.fulfillment,
+        atobaraiPDCompanyCode: invalidPDCompanyCode,
+      },
+    };
+
+    vi.spyOn(mockedAppConfigRepo, "getChannelConfig").mockResolvedValue(ok(mockedAppChannelConfig));
+
+    const useCase = new FulfillmentTrackingNumberUpdatedUseCase({
+      appConfigRepo: mockedAppConfigRepo,
+      atobaraiApiClientFactory,
+      transactionRecordRepo: new MockedTransactionRecordRepo(),
+      orderNoteServiceFactory() {
+        return mockedOrderNoteService;
+      },
+    });
+
+    const result = await useCase.execute({
+      appId: mockedSaleorAppId,
+      saleorApiUrl: mockedSaleorApiUrl,
+      event: eventWithInvalidPDCompanyCode,
+      graphqlClient: mockedGraphqlClient,
+    });
+
+    // @ts-expect-error - we expect Failure response
+    expect(result._unsafeUnwrap().error).toBeInstanceOf(InvalidEventValidationError);
+    // @ts-expect-error - we expect Failure response
+    expect(result._unsafeUnwrap().error.message).toContain(
+      "Invalid shipping company code: Validation error: Invalid enum value. Expected '50000' | '59010' | '59020' | '59030' | '59040' | '59041' | '59042' | '59043' | '59050' | '59060' | '59080' | '59090' | '59110' | '59140' | '59150' | '59100' | '59160' | '55555', received 'INVALID_CODE'",
+    );
+    expect(result._unsafeUnwrap().statusCode).toBe(200);
+    expect(await result._unsafeUnwrap().getResponse().json()).toMatchInlineSnapshot(`
+      {
+        "message": "[
+        {
+          "received": "INVALID_CODE",
+          "code": "invalid_enum_value",
+          "options": [
+            "50000",
+            "59010",
+            "59020",
+            "59030",
+            "59040",
+            "59041",
+            "59042",
+            "59043",
+            "59050",
+            "59060",
+            "59080",
+            "59090",
+            "59110",
+            "59140",
+            "59150",
+            "59100",
+            "59160",
+            "55555"
+          ],
+          "path": [],
+          "message": "Invalid enum value. Expected '50000' | '59010' | '59020' | '59030' | '59040' | '59041' | '59042' | '59043' | '59050' | '59060' | '59080' | '59090' | '59110' | '59140' | '59150' | '59100' | '59160' | '55555', received 'INVALID_CODE'"
+        }
+      ]
+      ZodValidationError: Validation error: Invalid enum value. Expected '50000' | '59010' | '59020' | '59030' | '59040' | '59041' | '59042' | '59043' | '59050' | '59060' | '59080' | '59090' | '59110' | '59140' | '59150' | '59100' | '59160' | '55555', received 'INVALID_CODE'
+      Invalid shipping company code: Validation error: Invalid enum value. Expected '50000' | '59010' | '59020' | '59030' | '59040' | '59041' | '59042' | '59043' | '59050' | '59060' | '59080' | '59090' | '59110' | '59140' | '59150' | '59100' | '59160' | '55555', received 'INVALID_CODE'",
+      }
+    `);
   });
 });

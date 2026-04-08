@@ -303,6 +303,7 @@ export type AccountErrorCode =
   | 'DELETE_OWN_ACCOUNT'
   | 'DELETE_STAFF_ACCOUNT'
   | 'DELETE_SUPERUSER_ACCOUNT'
+  | 'DISABLED_AUTHENTICATION_METHOD'
   | 'DUPLICATED_INPUT_ITEM'
   | 'GRAPHQL_ERROR'
   | 'INACTIVE'
@@ -875,6 +876,14 @@ export type App = Node & ObjectWithMetadata & {
   readonly privateMetafield?: Maybe<Scalars['String']['output']>;
   /** Private metadata. Requires staff permissions to access. Use `keys` to control which fields you want to include. The default is to include everything. */
   readonly privateMetafields?: Maybe<Scalars['Metadata']['output']>;
+  /**
+   * List of problems associated with this app.
+   *
+   * Added in Saleor 3.22.
+   *
+   * Requires one of the following permissions: AUTHENTICATED_APP, MANAGE_APPS.
+   */
+  readonly problems?: Maybe<ReadonlyArray<AppProblem>>;
   /** Support page for the app. */
   readonly supportUrl?: Maybe<Scalars['String']['output']>;
   /**
@@ -917,6 +926,12 @@ export type AppPrivateMetafieldArgs = {
 /** Represents app data. */
 export type AppPrivateMetafieldsArgs = {
   keys?: InputMaybe<ReadonlyArray<Scalars['String']['input']>>;
+};
+
+
+/** Represents app data. */
+export type AppProblemsArgs = {
+  limit?: InputMaybe<Scalars['PositiveInt']['input']>;
 };
 
 /**
@@ -1077,18 +1092,26 @@ export type AppExtension = Node & {
   readonly id: Scalars['ID']['output'];
   /** Label of the extension to show in the dashboard. */
   readonly label: Scalars['String']['output'];
-  /** Place where given extension will be mounted. */
-  readonly mount: AppExtensionMountEnum;
   /**
-   * App extension options.
+   * Name of the extension mount point in the dashboard. Value returned in UPPERCASE.
    *
    * Added in Saleor 3.22.
    */
-  readonly options?: Maybe<AppExtensionPossibleOptions>;
+  readonly mountName: Scalars['String']['output'];
   /** List of the app extension's permissions. */
   readonly permissions: ReadonlyArray<Permission>;
-  /** Type of way how app extension will be opened. */
-  readonly target: AppExtensionTargetEnum;
+  /**
+   * App extension settings.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly settings: Scalars['JSON']['output'];
+  /**
+   * Name of the extension target in the dashboard. Value returned in UPPERCASE.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly targetName: Scalars['String']['output'];
   /** URL of a view where extension's iframe is placed. */
   readonly url: Scalars['String']['output'];
 };
@@ -1109,87 +1132,19 @@ export type AppExtensionCountableEdge = {
 };
 
 export type AppExtensionFilterInput = {
-  readonly mount?: InputMaybe<ReadonlyArray<AppExtensionMountEnum>>;
-  readonly target?: InputMaybe<AppExtensionTargetEnum>;
+  /**
+   * Plain-text mount name (case insensitive)
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly mountName?: InputMaybe<ReadonlyArray<Scalars['String']['input']>>;
+  /**
+   * Plain-text target name (case insensitive)
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly targetName?: InputMaybe<Scalars['String']['input']>;
 };
-
-/** All places where app extension can be mounted. */
-export type AppExtensionMountEnum =
-  | 'CATEGORY_DETAILS_MORE_ACTIONS'
-  | 'CATEGORY_OVERVIEW_CREATE'
-  | 'CATEGORY_OVERVIEW_MORE_ACTIONS'
-  | 'COLLECTION_DETAILS_MORE_ACTIONS'
-  | 'COLLECTION_DETAILS_WIDGETS'
-  | 'COLLECTION_OVERVIEW_CREATE'
-  | 'COLLECTION_OVERVIEW_MORE_ACTIONS'
-  | 'CUSTOMER_DETAILS_MORE_ACTIONS'
-  | 'CUSTOMER_DETAILS_WIDGETS'
-  | 'CUSTOMER_OVERVIEW_CREATE'
-  | 'CUSTOMER_OVERVIEW_MORE_ACTIONS'
-  | 'DISCOUNT_DETAILS_MORE_ACTIONS'
-  | 'DISCOUNT_OVERVIEW_CREATE'
-  | 'DISCOUNT_OVERVIEW_MORE_ACTIONS'
-  | 'DRAFT_ORDER_DETAILS_MORE_ACTIONS'
-  | 'DRAFT_ORDER_DETAILS_WIDGETS'
-  | 'DRAFT_ORDER_OVERVIEW_CREATE'
-  | 'DRAFT_ORDER_OVERVIEW_MORE_ACTIONS'
-  | 'GIFT_CARD_DETAILS_MORE_ACTIONS'
-  | 'GIFT_CARD_DETAILS_WIDGETS'
-  | 'GIFT_CARD_OVERVIEW_CREATE'
-  | 'GIFT_CARD_OVERVIEW_MORE_ACTIONS'
-  | 'MENU_DETAILS_MORE_ACTIONS'
-  | 'MENU_OVERVIEW_CREATE'
-  | 'MENU_OVERVIEW_MORE_ACTIONS'
-  | 'NAVIGATION_CATALOG'
-  | 'NAVIGATION_CUSTOMERS'
-  | 'NAVIGATION_DISCOUNTS'
-  | 'NAVIGATION_ORDERS'
-  | 'NAVIGATION_PAGES'
-  | 'NAVIGATION_TRANSLATIONS'
-  | 'ORDER_DETAILS_MORE_ACTIONS'
-  | 'ORDER_DETAILS_WIDGETS'
-  | 'ORDER_OVERVIEW_CREATE'
-  | 'ORDER_OVERVIEW_MORE_ACTIONS'
-  | 'PAGE_DETAILS_MORE_ACTIONS'
-  | 'PAGE_OVERVIEW_CREATE'
-  | 'PAGE_OVERVIEW_MORE_ACTIONS'
-  | 'PAGE_TYPE_DETAILS_MORE_ACTIONS'
-  | 'PAGE_TYPE_OVERVIEW_CREATE'
-  | 'PAGE_TYPE_OVERVIEW_MORE_ACTIONS'
-  | 'PRODUCT_DETAILS_MORE_ACTIONS'
-  | 'PRODUCT_DETAILS_WIDGETS'
-  | 'PRODUCT_OVERVIEW_CREATE'
-  | 'PRODUCT_OVERVIEW_MORE_ACTIONS'
-  | 'VOUCHER_DETAILS_MORE_ACTIONS'
-  | 'VOUCHER_DETAILS_WIDGETS'
-  | 'VOUCHER_OVERVIEW_CREATE'
-  | 'VOUCHER_OVERVIEW_MORE_ACTIONS';
-
-/** Represents the options for an app extension. */
-export type AppExtensionOptionsNewTab = {
-  /** Options controlling behavior of the NEW_TAB extension target */
-  readonly newTabTarget?: Maybe<NewTabTargetOptions>;
-};
-
-/** Represents the options for an app extension. */
-export type AppExtensionOptionsWidget = {
-  /** Options for displaying a Widget */
-  readonly widgetTarget?: Maybe<WidgetTargetOptions>;
-};
-
-export type AppExtensionPossibleOptions = AppExtensionOptionsNewTab | AppExtensionOptionsWidget;
-
-/**
- * All available ways of opening an app extension.
- *
- *     POPUP - app's extension will be mounted as a popup window
- *     APP_PAGE - redirect to app's page
- */
-export type AppExtensionTargetEnum =
-  | 'APP_PAGE'
-  | 'NEW_TAB'
-  | 'POPUP'
-  | 'WIDGET';
 
 /**
  * Fetch and validate manifest.
@@ -1235,9 +1190,9 @@ export type AppInstallInput = {
   /** Determine if app will be set active or not. */
   readonly activateAfterInstallation?: InputMaybe<Scalars['Boolean']['input']>;
   /** Name of the app to install. */
-  readonly appName?: InputMaybe<Scalars['String']['input']>;
+  readonly appName: Scalars['String']['input'];
   /** URL to app's manifest in JSON format. */
-  readonly manifestUrl?: InputMaybe<Scalars['String']['input']>;
+  readonly manifestUrl: Scalars['String']['input'];
   /** List of permission code names to assign to this app. */
   readonly permissions?: InputMaybe<ReadonlyArray<PermissionEnum>>;
 };
@@ -1298,12 +1253,26 @@ export type AppManifestBrandLogoDefaultArgs = {
 export type AppManifestExtension = {
   /** Label of the extension to show in the dashboard. */
   readonly label: Scalars['String']['output'];
-  /** Place where given extension will be mounted. */
-  readonly mount: AppExtensionMountEnum;
+  /**
+   * Name of the extension mount point in the dashboard. Value returned in UPPERCASE.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly mountName: Scalars['String']['output'];
   /** List of the app extension's permissions. */
   readonly permissions: ReadonlyArray<Permission>;
-  /** Type of way how app extension will be opened. */
-  readonly target: AppExtensionTargetEnum;
+  /**
+   * App extension settings.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly settings: Scalars['JSON']['output'];
+  /**
+   * Name of the extension target in the dashboard. Value returned in UPPERCASE.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly targetName: Scalars['String']['output'];
   /** URL of a view where extension's iframe is placed. */
   readonly url: Scalars['String']['output'];
 };
@@ -1327,6 +1296,196 @@ export type AppManifestWebhook = {
   /** The url to receive the payload. */
   readonly targetUrl: Scalars['String']['output'];
 };
+
+/**
+ * Represents a problem associated with an app.
+ *
+ * Added in Saleor 3.22.
+ */
+export type AppProblem = Node & {
+  /**
+   * Number of occurrences.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly count: Scalars['Int']['output'];
+  /**
+   * The date and time when the problem was created.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly createdAt: Scalars['DateTime']['output'];
+  /**
+   * Dismissal information. Null if the problem has not been dismissed.
+   *
+   * Added in Saleor 3.22.
+   *
+   * Requires one of the following permissions: AUTHENTICATED_APP, MANAGE_APPS.
+   */
+  readonly dismissed?: Maybe<AppProblemDismissed>;
+  /**
+   * The ID of the app problem.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly id: Scalars['ID']['output'];
+  /**
+   * Whether the problem has reached critical threshold.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly isCritical: Scalars['Boolean']['output'];
+  /**
+   * Key identifying the type of problem.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly key: Scalars['String']['output'];
+  /**
+   * The problem message.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly message: Scalars['String']['output'];
+  /**
+   * The date and time when the problem was last updated.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly updatedAt: Scalars['DateTime']['output'];
+};
+
+/**
+ * Add a problem to the calling app.
+ *
+ * Added in Saleor 3.22.
+ *
+ * Requires one of the following permissions: AUTHENTICATED_APP.
+ */
+export type AppProblemCreate = {
+  /** The created or updated app problem. */
+  readonly appProblem?: Maybe<AppProblem>;
+  readonly errors: ReadonlyArray<AppProblemCreateError>;
+};
+
+export type AppProblemCreateError = {
+  /** The error code. */
+  readonly code: AppProblemCreateErrorCode;
+  /** Name of a field that caused the error. A value of `null` indicates that the error isn't associated with a particular field. */
+  readonly field?: Maybe<Scalars['String']['output']>;
+  /** The error message. */
+  readonly message?: Maybe<Scalars['String']['output']>;
+};
+
+export type AppProblemCreateErrorCode =
+  | 'GRAPHQL_ERROR'
+  | 'INVALID'
+  | 'NOT_FOUND'
+  | 'REQUIRED';
+
+export type AppProblemCreateInput = {
+  /** Time window in minutes for aggregating problems with the same key. Defaults to 60. If 0, a new problem is always created. */
+  readonly aggregationPeriod?: InputMaybe<Scalars['Minute']['input']>;
+  /** If set, the problem becomes critical when count reaches this value. If sent again with higher value than already counted, problem can be de-escalated. */
+  readonly criticalThreshold?: InputMaybe<Scalars['PositiveInt']['input']>;
+  /** Key identifying the type of problem. App can add multiple problems under the same key, to merge them together or delete them in batch. Must be between 3 and 128 characters. */
+  readonly key: Scalars['String']['input'];
+  /** The problem message to display. Must be at least 3 characters. Messages longer than 2048 characters will be truncated to 2048 characters with '...' suffix. */
+  readonly message: Scalars['String']['input'];
+};
+
+/**
+ * Dismiss problems for an app.
+ *
+ * Added in Saleor 3.22.
+ *
+ * Requires one of the following permissions: MANAGE_APPS, AUTHENTICATED_APP.
+ */
+export type AppProblemDismiss = {
+  readonly errors: ReadonlyArray<AppProblemDismissError>;
+};
+
+/** Input for app callers to dismiss their own problems. */
+export type AppProblemDismissByAppInput = {
+  /** List of problem IDs to dismiss. Cannot be combined with keys. Max 100. */
+  readonly ids?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  /** List of problem keys to dismiss. Cannot be combined with ids. Max 100. */
+  readonly keys?: InputMaybe<ReadonlyArray<Scalars['String']['input']>>;
+};
+
+/** Input for staff callers to dismiss problems by IDs. */
+export type AppProblemDismissByStaffWithIdsInput = {
+  /** List of problem IDs to dismiss. Max 100. */
+  readonly ids: ReadonlyArray<Scalars['ID']['input']>;
+};
+
+/** Input for staff callers to dismiss problems by keys. */
+export type AppProblemDismissByStaffWithKeysInput = {
+  /** ID of the app whose problems to dismiss. */
+  readonly app: Scalars['ID']['input'];
+  /** List of problem keys to dismiss. Max 100. */
+  readonly keys: ReadonlyArray<Scalars['String']['input']>;
+};
+
+export type AppProblemDismissError = {
+  /** The error code. */
+  readonly code: AppProblemDismissErrorCode;
+  /** Name of a field that caused the error. A value of `null` indicates that the error isn't associated with a particular field. */
+  readonly field?: Maybe<Scalars['String']['output']>;
+  /** The error message. */
+  readonly message?: Maybe<Scalars['String']['output']>;
+};
+
+export type AppProblemDismissErrorCode =
+  | 'GRAPHQL_ERROR'
+  | 'INVALID'
+  | 'NOT_FOUND'
+  | 'OUT_OF_SCOPE_APP'
+  | 'REQUIRED';
+
+/** Input for dismissing app problems. Only one can be specified. */
+export type AppProblemDismissInput = {
+  /** For app callers only - dismiss own problems. */
+  readonly byApp?: InputMaybe<AppProblemDismissByAppInput>;
+  /** For staff callers - dismiss problems by IDs. */
+  readonly byStaffWithIds?: InputMaybe<AppProblemDismissByStaffWithIdsInput>;
+  /** For staff callers - dismiss problems by keys for specified app. */
+  readonly byStaffWithKeys?: InputMaybe<AppProblemDismissByStaffWithKeysInput>;
+};
+
+/**
+ * Dismissal information for an app problem.
+ *
+ * Added in Saleor 3.22.
+ */
+export type AppProblemDismissed = {
+  /**
+   * Whether the problem was dismissed by an App or a User.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly by: AppProblemDismissedByEnum;
+  /**
+   * The user who dismissed this problem. Null if dismissed by an app or the user was deleted.
+   *
+   * Added in Saleor 3.22.
+   *
+   * Requires one of the following permissions: MANAGE_STAFF.
+   */
+  readonly user?: Maybe<User>;
+  /**
+   * Email of the user who dismissed this problem. Preserved even if the user is deleted.
+   *
+   * Added in Saleor 3.22.
+   *
+   * Requires one of the following permissions: AUTHENTICATED_STAFF_USER.
+   */
+  readonly userEmail?: Maybe<Scalars['String']['output']>;
+};
+
+export type AppProblemDismissedByEnum =
+  | 'APP'
+  | 'USER';
 
 /**
  * Re-enable sync webhooks for provided app. Can be used to manually re-enable sync webhooks for the app before the cooldown period ends.
@@ -1952,7 +2111,7 @@ export type Attribute = Node & ObjectWithMetadata & {
   /** Public metadata. Use `keys` to control which fields you want to include. The default is to include everything. */
   readonly metafields?: Maybe<Scalars['Metadata']['output']>;
   /** Name of an attribute displayed in the interface. */
-  readonly name?: Maybe<Scalars['String']['output']>;
+  readonly name: Scalars['String']['output'];
   /** List of private metadata items. Requires staff permissions to access. */
   readonly privateMetadata: ReadonlyArray<MetadataItem>;
   /**
@@ -1974,7 +2133,7 @@ export type Attribute = Node & ObjectWithMetadata & {
    */
   readonly referenceTypes?: Maybe<ReadonlyArray<ReferenceType>>;
   /** Internal representation of an attribute name. */
-  readonly slug?: Maybe<Scalars['String']['output']>;
+  readonly slug: Scalars['String']['output'];
   /**
    * The position of the attribute in the storefront navigation (0 by default). Requires one of the following permissions: MANAGE_PAGES, MANAGE_PAGE_TYPES_AND_ATTRIBUTES, MANAGE_PRODUCTS, MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES.
    * @deprecated Field no longer supported
@@ -1983,7 +2142,7 @@ export type Attribute = Node & ObjectWithMetadata & {
   /** Returns translated attribute fields for the given language code. */
   readonly translation?: Maybe<AttributeTranslation>;
   /** The attribute type. */
-  readonly type?: Maybe<AttributeTypeEnum>;
+  readonly type: AttributeTypeEnum;
   /** The unit of attribute values. */
   readonly unit?: Maybe<MeasurementUnitsEnum>;
   /** Whether the attribute requires values to be passed or not. Requires one of the following permissions: MANAGE_PAGES, MANAGE_PAGE_TYPES_AND_ATTRIBUTES, MANAGE_PRODUCTS, MANAGE_PRODUCT_TYPES_AND_ATTRIBUTES. */
@@ -4102,9 +4261,16 @@ export type Checkout = Node & ObjectWithMetadata & {
   /**
    * The delivery method selected for this checkout.
    *
+   * Added in Saleor 3.23.
+   */
+  readonly delivery?: Maybe<Delivery>;
+  /**
+   * The delivery method selected for this checkout.
+   *
    * Triggers the following webhook events:
    * - SHIPPING_LIST_METHODS_FOR_CHECKOUT (sync): Optionally triggered when cached external shipping methods are invalid.
    * - CHECKOUT_FILTER_SHIPPING_METHODS (sync): Optionally triggered when cached filtered shipping methods are invalid.
+   * @deprecated Use `delivery` instead.
    */
   readonly deliveryMethod?: Maybe<DeliveryMethod>;
   /** The total discount applied to the checkout. Note: Only discount created via voucher are included in this field. */
@@ -4164,7 +4330,7 @@ export type Checkout = Node & ObjectWithMetadata & {
    * Triggers the following webhook events:
    * - SHIPPING_LIST_METHODS_FOR_CHECKOUT (sync): Optionally triggered when cached external shipping methods are invalid.
    * - CHECKOUT_FILTER_SHIPPING_METHODS (sync): Optionally triggered when cached filtered shipping methods are invalid.
-   * @deprecated Use `deliveryMethod` instead.
+   * @deprecated Use `delivery` instead.
    */
   readonly shippingMethod?: Maybe<ShippingMethod>;
   /**
@@ -4302,6 +4468,15 @@ export type CheckoutAuthorizeStatusEnum =
   | 'FULL'
   | 'NONE'
   | 'PARTIAL';
+
+export type CheckoutAutoCompleteInput = {
+  /** Specifies the earliest date on which fully paid checkouts can begin to be automatically completed. Fully paid checkouts dated before this cut-off will not be automatically completed. Must be less than the threshold of the oldest modified checkout eligible for automatic completion. Default is current date time. */
+  readonly cutOffDate?: InputMaybe<Scalars['DateTime']['input']>;
+  /** The time in minutes after which the fully paid checkout will be automatically completed. Default is 30. Set to 0 for immediate completion. Should be less than the threshold for the oldest modified checkout eligible for automatic completion. */
+  readonly delay?: InputMaybe<Scalars['Minute']['input']>;
+  /** Default `false`. Determines if the paid checkouts should be automatically completed. This setting applies only to checkouts where payment was processed through transactions.When enabled, the checkout will be automatically completed once the checkout `charge_status` reaches `FULL`. This occurs when the total sum of charged and authorized transaction amounts equals or exceeds the checkout's total amount. */
+  readonly enabled: Scalars['Boolean']['input'];
+};
 
 /**
  * Updates billing address in the existing checkout.
@@ -4559,6 +4734,7 @@ export type CheckoutCustomerNoteUpdate = {
  *
  * Triggers the following webhook events:
  * - SHIPPING_LIST_METHODS_FOR_CHECKOUT (sync): Triggered when updating the checkout delivery method with the external one.
+ * - CHECKOUT_FILTER_SHIPPING_METHODS (sync): Optionally triggered when cached filtered shipping methods are invalid.
  * - CHECKOUT_UPDATED (async): A checkout was updated.
  */
 export type CheckoutDeliveryMethodUpdate = {
@@ -4956,7 +5132,25 @@ export type CheckoutPaymentCreate = {
 };
 
 /** Represents an problem in the checkout. */
-export type CheckoutProblem = CheckoutLineProblemInsufficientStock | CheckoutLineProblemVariantNotAvailable;
+export type CheckoutProblem = CheckoutLineProblemInsufficientStock | CheckoutLineProblemVariantNotAvailable | CheckoutProblemDeliveryMethodInvalid | CheckoutProblemDeliveryMethodStale;
+
+/**
+ * Indicates that the selected delivery method is invalid.
+ *
+ * Added in Saleor 3.23.
+ */
+export type CheckoutProblemDeliveryMethodInvalid = {
+  readonly delivery: Delivery;
+};
+
+/**
+ * Indicates that the delivery methods are stale.
+ *
+ * Added in Saleor 3.23.
+ */
+export type CheckoutProblemDeliveryMethodStale = {
+  readonly delivery: Delivery;
+};
 
 /**
  * Remove a gift card or a voucher from a checkout.
@@ -4975,6 +5169,24 @@ export type CheckoutRemovePromoCode = {
 /** Represents the channel-specific checkout settings. */
 export type CheckoutSettings = {
   /**
+   * Default to `true`. Determines whether gift cards can be attached to a Checkout via `addPromoCode` mutation. Usage of this mutation with gift cards is deprecated.
+   *
+   * Added in Saleor 3.23.
+   */
+  readonly allowLegacyGiftCardUse: Scalars['Boolean']['output'];
+  /**
+   * The date time defines the earliest checkout creation date on which fully paid checkouts can begin to be automatically completed.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly automaticCompletionCutOffDate?: Maybe<Scalars['DateTime']['output']>;
+  /**
+   * The time in minutes to wait after a checkout is fully paid before automatically completing it.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly automaticCompletionDelay?: Maybe<Scalars['Minute']['output']>;
+  /**
    * Default `false`. Determines if the paid checkouts should be automatically completed. This setting applies only to checkouts where payment was processed through transactions.When enabled, the checkout will be automatically completed once the checkout `charge_status` reaches `FULL`. This occurs when the total sum of charged and authorized transaction amounts equals or exceeds the checkout's total amount.
    *
    * Added in Saleor 3.20.
@@ -4986,9 +5198,22 @@ export type CheckoutSettings = {
 
 export type CheckoutSettingsInput = {
   /**
-   * Default `false`. Determines if the paid checkouts should be automatically completed. This setting applies only to checkouts where payment was processed through transactions.When enabled, the checkout will be automatically completed once the checkout `charge_status` reaches `FULL`. This occurs when the total sum of charged and authorized transaction amounts equals or exceeds the checkout's total amount.
+   * Default to `true`. Determines whether gift cards can be attached to a Checkout via `addPromoCode` mutation. Usage of this mutation with gift cards is deprecated.
+   *
+   * Added in Saleor 3.23.
+   */
+  readonly allowLegacyGiftCardUse?: InputMaybe<Scalars['Boolean']['input']>;
+  /**
+   * Settings for automatic completion of fully paid checkouts.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly automaticCompletion?: InputMaybe<CheckoutAutoCompleteInput>;
+  /**
+   * Default `false`. Determines if the paid checkouts should be automatically completed. This setting applies only to checkouts where payment was processed through transactions.When enabled, the checkout will be automatically completed once the checkout `authorize_status` reaches `FULL`. This occurs when the total sum of charged and authorized transaction amounts equals or exceeds the checkout's total amount.
    *
    * Added in Saleor 3.20.
+   * @deprecated Use `automatic_completion` instead.
    */
   readonly automaticallyCompleteFullyPaidCheckouts?: InputMaybe<Scalars['Boolean']['input']>;
   /**
@@ -5017,6 +5242,7 @@ export type CheckoutShippingAddressUpdate = {
  *
  * Triggers the following webhook events:
  * - SHIPPING_LIST_METHODS_FOR_CHECKOUT (sync): Triggered when updating the checkout shipping method with the external one.
+ * - CHECKOUT_FILTER_SHIPPING_METHODS (sync): Optionally triggered when cached filtered shipping methods are invalid.
  * - CHECKOUT_UPDATED (async): A checkout was updated.
  */
 export type CheckoutShippingMethodUpdate = {
@@ -5033,7 +5259,9 @@ export type CheckoutSortField =
   /** Sort checkouts by customer. */
   | 'CUSTOMER'
   /** Sort checkouts by payment. */
-  | 'PAYMENT';
+  | 'PAYMENT'
+  /** Sort checkouts by rank. Note: This option is available only with the `search` filter. */
+  | 'RANK';
 
 export type CheckoutSortingInput = {
   /** Specifies the direction in which to sort checkouts. */
@@ -5752,256 +5980,507 @@ export type ContainsFilterInput = {
  * The `EU` value is DEPRECATED and will be removed in Saleor 3.21.
  */
 export type CountryCode =
+  /** Andorra */
   | 'AD'
+  /** United Arab Emirates */
   | 'AE'
+  /** Afghanistan */
   | 'AF'
+  /** Antigua and Barbuda */
   | 'AG'
+  /** Anguilla */
   | 'AI'
+  /** Albania */
   | 'AL'
+  /** Armenia */
   | 'AM'
+  /** Angola */
   | 'AO'
+  /** Antarctica */
   | 'AQ'
+  /** Argentina */
   | 'AR'
+  /** American Samoa */
   | 'AS'
+  /** Austria */
   | 'AT'
+  /** Australia */
   | 'AU'
+  /** Aruba */
   | 'AW'
+  /** Åland Islands */
   | 'AX'
+  /** Azerbaijan */
   | 'AZ'
+  /** Bosnia and Herzegovina */
   | 'BA'
+  /** Barbados */
   | 'BB'
+  /** Bangladesh */
   | 'BD'
+  /** Belgium */
   | 'BE'
+  /** Burkina Faso */
   | 'BF'
+  /** Bulgaria */
   | 'BG'
+  /** Bahrain */
   | 'BH'
+  /** Burundi */
   | 'BI'
+  /** Benin */
   | 'BJ'
+  /** Saint Barthélemy */
   | 'BL'
+  /** Bermuda */
   | 'BM'
+  /** Brunei */
   | 'BN'
+  /** Bolivia */
   | 'BO'
+  /** Bonaire, Sint Eustatius and Saba */
   | 'BQ'
+  /** Brazil */
   | 'BR'
+  /** Bahamas */
   | 'BS'
+  /** Bhutan */
   | 'BT'
+  /** Bouvet Island */
   | 'BV'
+  /** Botswana */
   | 'BW'
+  /** Belarus */
   | 'BY'
+  /** Belize */
   | 'BZ'
+  /** Canada */
   | 'CA'
+  /** Cocos (Keeling) Islands */
   | 'CC'
+  /** Congo (the Democratic Republic of the) */
   | 'CD'
+  /** Central African Republic */
   | 'CF'
+  /** Congo */
   | 'CG'
+  /** Switzerland */
   | 'CH'
+  /** Côte d'Ivoire */
   | 'CI'
+  /** Cook Islands */
   | 'CK'
+  /** Chile */
   | 'CL'
+  /** Cameroon */
   | 'CM'
+  /** China */
   | 'CN'
+  /** Colombia */
   | 'CO'
+  /** Costa Rica */
   | 'CR'
+  /** Cuba */
   | 'CU'
+  /** Cabo Verde */
   | 'CV'
+  /** Curaçao */
   | 'CW'
+  /** Christmas Island */
   | 'CX'
+  /** Cyprus */
   | 'CY'
+  /** Czechia */
   | 'CZ'
+  /** Germany */
   | 'DE'
+  /** Djibouti */
   | 'DJ'
+  /** Denmark */
   | 'DK'
+  /** Dominica */
   | 'DM'
+  /** Dominican Republic */
   | 'DO'
+  /** Algeria */
   | 'DZ'
+  /** Ecuador */
   | 'EC'
+  /** Estonia */
   | 'EE'
+  /** Egypt */
   | 'EG'
+  /** Western Sahara */
   | 'EH'
+  /** Eritrea */
   | 'ER'
+  /** Spain */
   | 'ES'
+  /** Ethiopia */
   | 'ET'
+  /** European Union */
   | 'EU'
+  /** Finland */
   | 'FI'
+  /** Fiji */
   | 'FJ'
+  /** Falkland Islands (Malvinas) */
   | 'FK'
+  /** Micronesia */
   | 'FM'
+  /** Faroe Islands */
   | 'FO'
+  /** France */
   | 'FR'
+  /** Gabon */
   | 'GA'
+  /** United Kingdom */
   | 'GB'
+  /** Grenada */
   | 'GD'
+  /** Georgia */
   | 'GE'
+  /** French Guiana */
   | 'GF'
+  /** Guernsey */
   | 'GG'
+  /** Ghana */
   | 'GH'
+  /** Gibraltar */
   | 'GI'
+  /** Greenland */
   | 'GL'
+  /** Gambia */
   | 'GM'
+  /** Guinea */
   | 'GN'
+  /** Guadeloupe */
   | 'GP'
+  /** Equatorial Guinea */
   | 'GQ'
+  /** Greece */
   | 'GR'
+  /** South Georgia and the South Sandwich Islands */
   | 'GS'
+  /** Guatemala */
   | 'GT'
+  /** Guam */
   | 'GU'
+  /** Guinea-Bissau */
   | 'GW'
+  /** Guyana */
   | 'GY'
+  /** Hong Kong */
   | 'HK'
+  /** Heard Island and McDonald Islands */
   | 'HM'
+  /** Honduras */
   | 'HN'
+  /** Croatia */
   | 'HR'
+  /** Haiti */
   | 'HT'
+  /** Hungary */
   | 'HU'
+  /** Indonesia */
   | 'ID'
+  /** Ireland */
   | 'IE'
+  /** Israel */
   | 'IL'
+  /** Isle of Man */
   | 'IM'
+  /** India */
   | 'IN'
+  /** British Indian Ocean Territory */
   | 'IO'
+  /** Iraq */
   | 'IQ'
+  /** Iran */
   | 'IR'
+  /** Iceland */
   | 'IS'
+  /** Italy */
   | 'IT'
+  /** Jersey */
   | 'JE'
+  /** Jamaica */
   | 'JM'
+  /** Jordan */
   | 'JO'
+  /** Japan */
   | 'JP'
+  /** Kenya */
   | 'KE'
+  /** Kyrgyzstan */
   | 'KG'
+  /** Cambodia */
   | 'KH'
+  /** Kiribati */
   | 'KI'
+  /** Comoros */
   | 'KM'
+  /** Saint Kitts and Nevis */
   | 'KN'
+  /** North Korea */
   | 'KP'
+  /** South Korea */
   | 'KR'
+  /** Kuwait */
   | 'KW'
+  /** Cayman Islands */
   | 'KY'
+  /** Kazakhstan */
   | 'KZ'
+  /** Laos */
   | 'LA'
+  /** Lebanon */
   | 'LB'
+  /** Saint Lucia */
   | 'LC'
+  /** Liechtenstein */
   | 'LI'
+  /** Sri Lanka */
   | 'LK'
+  /** Liberia */
   | 'LR'
+  /** Lesotho */
   | 'LS'
+  /** Lithuania */
   | 'LT'
+  /** Luxembourg */
   | 'LU'
+  /** Latvia */
   | 'LV'
+  /** Libya */
   | 'LY'
+  /** Morocco */
   | 'MA'
+  /** Monaco */
   | 'MC'
+  /** Moldova */
   | 'MD'
+  /** Montenegro */
   | 'ME'
+  /** Saint Martin (French part) */
   | 'MF'
+  /** Madagascar */
   | 'MG'
+  /** Marshall Islands */
   | 'MH'
+  /** North Macedonia */
   | 'MK'
+  /** Mali */
   | 'ML'
+  /** Myanmar */
   | 'MM'
+  /** Mongolia */
   | 'MN'
+  /** Macao */
   | 'MO'
+  /** Northern Mariana Islands */
   | 'MP'
+  /** Martinique */
   | 'MQ'
+  /** Mauritania */
   | 'MR'
+  /** Montserrat */
   | 'MS'
+  /** Malta */
   | 'MT'
+  /** Mauritius */
   | 'MU'
+  /** Maldives */
   | 'MV'
+  /** Malawi */
   | 'MW'
+  /** Mexico */
   | 'MX'
+  /** Malaysia */
   | 'MY'
+  /** Mozambique */
   | 'MZ'
+  /** Namibia */
   | 'NA'
+  /** New Caledonia */
   | 'NC'
+  /** Niger */
   | 'NE'
+  /** Norfolk Island */
   | 'NF'
+  /** Nigeria */
   | 'NG'
+  /** Nicaragua */
   | 'NI'
+  /** Netherlands */
   | 'NL'
+  /** Norway */
   | 'NO'
+  /** Nepal */
   | 'NP'
+  /** Nauru */
   | 'NR'
+  /** Niue */
   | 'NU'
+  /** New Zealand */
   | 'NZ'
+  /** Oman */
   | 'OM'
+  /** Panama */
   | 'PA'
+  /** Peru */
   | 'PE'
+  /** French Polynesia */
   | 'PF'
+  /** Papua New Guinea */
   | 'PG'
+  /** Philippines */
   | 'PH'
+  /** Pakistan */
   | 'PK'
+  /** Poland */
   | 'PL'
+  /** Saint Pierre and Miquelon */
   | 'PM'
+  /** Pitcairn */
   | 'PN'
+  /** Puerto Rico */
   | 'PR'
+  /** Palestine, State of */
   | 'PS'
+  /** Portugal */
   | 'PT'
+  /** Palau */
   | 'PW'
+  /** Paraguay */
   | 'PY'
+  /** Qatar */
   | 'QA'
+  /** Réunion */
   | 'RE'
+  /** Romania */
   | 'RO'
+  /** Serbia */
   | 'RS'
+  /** Russia */
   | 'RU'
+  /** Rwanda */
   | 'RW'
+  /** Saudi Arabia */
   | 'SA'
+  /** Solomon Islands */
   | 'SB'
+  /** Seychelles */
   | 'SC'
+  /** Sudan */
   | 'SD'
+  /** Sweden */
   | 'SE'
+  /** Singapore */
   | 'SG'
+  /** Saint Helena, Ascension and Tristan da Cunha */
   | 'SH'
+  /** Slovenia */
   | 'SI'
+  /** Svalbard and Jan Mayen */
   | 'SJ'
+  /** Slovakia */
   | 'SK'
+  /** Sierra Leone */
   | 'SL'
+  /** San Marino */
   | 'SM'
+  /** Senegal */
   | 'SN'
+  /** Somalia */
   | 'SO'
+  /** Suriname */
   | 'SR'
+  /** South Sudan */
   | 'SS'
+  /** Sao Tome and Principe */
   | 'ST'
+  /** El Salvador */
   | 'SV'
+  /** Sint Maarten (Dutch part) */
   | 'SX'
+  /** Syria */
   | 'SY'
+  /** Eswatini */
   | 'SZ'
+  /** Turks and Caicos Islands */
   | 'TC'
+  /** Chad */
   | 'TD'
+  /** French Southern Territories */
   | 'TF'
+  /** Togo */
   | 'TG'
+  /** Thailand */
   | 'TH'
+  /** Tajikistan */
   | 'TJ'
+  /** Tokelau */
   | 'TK'
+  /** Timor-Leste */
   | 'TL'
+  /** Turkmenistan */
   | 'TM'
+  /** Tunisia */
   | 'TN'
+  /** Tonga */
   | 'TO'
+  /** Türkiye */
   | 'TR'
+  /** Trinidad and Tobago */
   | 'TT'
+  /** Tuvalu */
   | 'TV'
+  /** Taiwan */
   | 'TW'
+  /** Tanzania */
   | 'TZ'
+  /** Ukraine */
   | 'UA'
+  /** Uganda */
   | 'UG'
+  /** United States Minor Outlying Islands */
   | 'UM'
+  /** United States of America */
   | 'US'
+  /** Uruguay */
   | 'UY'
+  /** Uzbekistan */
   | 'UZ'
+  /** Holy See */
   | 'VA'
+  /** Saint Vincent and the Grenadines */
   | 'VC'
+  /** Venezuela */
   | 'VE'
+  /** Virgin Islands (British) */
   | 'VG'
+  /** Virgin Islands (U.S.) */
   | 'VI'
+  /** Vietnam */
   | 'VN'
+  /** Vanuatu */
   | 'VU'
+  /** Wallis and Futuna */
   | 'WF'
+  /** Samoa */
   | 'WS'
+  /** Kosovo */
   | 'XK'
+  /** Yemen */
   | 'YE'
+  /** Mayotte */
   | 'YT'
+  /** South Africa */
   | 'ZA'
+  /** Zambia */
   | 'ZM'
+  /** Zimbabwe */
   | 'ZW';
 
 /** Filter by country code. */
@@ -6202,8 +6681,6 @@ export type CustomerEvent = Node & {
   readonly message?: Maybe<Scalars['String']['output']>;
   /** The concerned order. */
   readonly order?: Maybe<Order>;
-  /** The concerned order line. */
-  readonly orderLine?: Maybe<OrderLine>;
   /** Customer event type. */
   readonly type?: Maybe<CustomerEventsEnum>;
   /** User who performed the action. */
@@ -6285,6 +6762,62 @@ export type CustomerMetadataUpdated = Event & {
   readonly user?: Maybe<User>;
   /** Saleor version that triggered the event. */
   readonly version?: Maybe<Scalars['String']['output']>;
+};
+
+export type CustomerOrderWhereInput = {
+  /** List of conditions that must be met. */
+  readonly AND?: InputMaybe<ReadonlyArray<CustomerOrderWhereInput>>;
+  /** A list of conditions of which at least one must be met. */
+  readonly OR?: InputMaybe<ReadonlyArray<CustomerOrderWhereInput>>;
+  /** Filter by authorize status. */
+  readonly authorizeStatus?: InputMaybe<OrderAuthorizeStatusEnumFilterInput>;
+  /** Filter by billing address of the order. */
+  readonly billingAddress?: InputMaybe<AddressFilterInput>;
+  /** Filter by channel. */
+  readonly channelId?: InputMaybe<GlobalIdFilterInput>;
+  /** Filter by charge status. */
+  readonly chargeStatus?: InputMaybe<OrderChargeStatusEnumFilterInput>;
+  /** Filter by checkout id. */
+  readonly checkoutId?: InputMaybe<GlobalIdFilterInput>;
+  /** Filter by checkout token. */
+  readonly checkoutToken?: InputMaybe<UuidFilterInput>;
+  /** Filter order by created at date. */
+  readonly createdAt?: InputMaybe<DateTimeRangeInput>;
+  /** Filter by whether the order has any fulfillments. */
+  readonly hasFulfillments?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Filter by whether the order has any invoices. */
+  readonly hasInvoices?: InputMaybe<Scalars['Boolean']['input']>;
+  readonly ids?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  /** Filter by invoice data associated with the order. Each list item represents conditions that must be satisfied by a single object. The filter matches orders that have related objects meeting all specified groups of conditions. */
+  readonly invoices?: InputMaybe<ReadonlyArray<InvoiceFilterInput>>;
+  /** Filter by whether the order uses the click and collect delivery method. */
+  readonly isClickAndCollect?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Filter based on whether the order includes a gift card purchase. */
+  readonly isGiftCardBought?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Filter based on whether a gift card was used in the order. */
+  readonly isGiftCardUsed?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Filter by number of lines in the order. */
+  readonly linesCount?: InputMaybe<IntFilterInput>;
+  /** Filter by metadata fields. */
+  readonly metadata?: InputMaybe<MetadataFilterInput>;
+  /** Filter by order number. */
+  readonly number?: InputMaybe<IntFilterInput>;
+  /** Filter by the product type of related order lines. */
+  readonly productTypeId?: InputMaybe<GlobalIdFilterInput>;
+  /** Filter by shipping address of the order. */
+  readonly shippingAddress?: InputMaybe<AddressFilterInput>;
+  /** Filter by order status. */
+  readonly status?: InputMaybe<OrderStatusEnumFilterInput>;
+  /** Filter by total gross amount of the order. */
+  readonly totalGross?: InputMaybe<PriceFilterInput>;
+  /** Filter by total net amount of the order. */
+  readonly totalNet?: InputMaybe<PriceFilterInput>;
+  /** Filter order by updated at date. */
+  readonly updatedAt?: InputMaybe<DateTimeRangeInput>;
+  /** Filter by user email. */
+  readonly userEmail?: InputMaybe<StringFilterInput>;
+  /** Filter by voucher code used in the order. */
+  readonly voucherCode?: InputMaybe<StringFilterInput>;
 };
 
 /**
@@ -6413,207 +6946,49 @@ export type DeletePrivateMetadata = {
   readonly metadataErrors: ReadonlyArray<MetadataError>;
 };
 
+/**
+ * Represents a delivery option for the checkout.
+ *
+ * Added in Saleor 3.23.
+ */
+export type Delivery = {
+  /** The ID of the delivery. */
+  readonly id: Scalars['ID']['output'];
+  /** Shipping method represented by the delivery. */
+  readonly shippingMethod?: Maybe<ShippingMethod>;
+};
+
 /** Represents a delivery method chosen for the checkout. `Warehouse` type is used when checkout is marked as "click and collect" and `ShippingMethod` otherwise. */
 export type DeliveryMethod = ShippingMethod | Warehouse;
 
-/** Represents digital content associated with a product variant. */
-export type DigitalContent = Node & ObjectWithMetadata & {
-  /** Indicator for automatic fulfillment of digital content. */
-  readonly automaticFulfillment: Scalars['Boolean']['output'];
-  /** File associated with digital content. */
-  readonly contentFile: Scalars['String']['output'];
-  /** The ID of the digital content. */
-  readonly id: Scalars['ID']['output'];
-  /** Maximum number of allowed downloads for the digital content. */
-  readonly maxDownloads?: Maybe<Scalars['Int']['output']>;
-  /** List of public metadata items. Can be accessed without permissions. */
-  readonly metadata: ReadonlyArray<MetadataItem>;
-  /**
-   * A single key from public metadata.
-   *
-   * Tip: Use GraphQL aliases to fetch multiple keys.
-   */
-  readonly metafield?: Maybe<Scalars['String']['output']>;
-  /** Public metadata. Use `keys` to control which fields you want to include. The default is to include everything. */
-  readonly metafields?: Maybe<Scalars['Metadata']['output']>;
-  /** List of private metadata items. Requires staff permissions to access. */
-  readonly privateMetadata: ReadonlyArray<MetadataItem>;
-  /**
-   * A single key from private metadata. Requires staff permissions to access.
-   *
-   * Tip: Use GraphQL aliases to fetch multiple keys.
-   */
-  readonly privateMetafield?: Maybe<Scalars['String']['output']>;
-  /** Private metadata. Requires staff permissions to access. Use `keys` to control which fields you want to include. The default is to include everything. */
-  readonly privateMetafields?: Maybe<Scalars['Metadata']['output']>;
-  /** Product variant assigned to digital content. */
-  readonly productVariant: ProductVariant;
-  /** Number of days the URL for the digital content remains valid. */
-  readonly urlValidDays?: Maybe<Scalars['Int']['output']>;
-  /** List of URLs for the digital variant. */
-  readonly urls?: Maybe<ReadonlyArray<DigitalContentUrl>>;
-  /** Default settings indicator for digital content. */
-  readonly useDefaultSettings: Scalars['Boolean']['output'];
-};
-
-
-/** Represents digital content associated with a product variant. */
-export type DigitalContentMetafieldArgs = {
-  key: Scalars['String']['input'];
-};
-
-
-/** Represents digital content associated with a product variant. */
-export type DigitalContentMetafieldsArgs = {
-  keys?: InputMaybe<ReadonlyArray<Scalars['String']['input']>>;
-};
-
-
-/** Represents digital content associated with a product variant. */
-export type DigitalContentPrivateMetafieldArgs = {
-  key: Scalars['String']['input'];
-};
-
-
-/** Represents digital content associated with a product variant. */
-export type DigitalContentPrivateMetafieldsArgs = {
-  keys?: InputMaybe<ReadonlyArray<Scalars['String']['input']>>;
-};
-
-/** A connection to a list of digital content items. */
-export type DigitalContentCountableConnection = {
-  readonly edges: ReadonlyArray<DigitalContentCountableEdge>;
-  /** Pagination data for this connection. */
-  readonly pageInfo: PageInfo;
-  /** A total count of items in the collection. */
-  readonly totalCount?: Maybe<Scalars['Int']['output']>;
-};
-
-export type DigitalContentCountableEdge = {
-  /** A cursor for use in pagination. */
-  readonly cursor: Scalars['String']['output'];
-  /** The item at the end of the edge. */
-  readonly node: DigitalContent;
-};
-
 /**
- * Create new digital content. This mutation must be sent as a `multipart` request. More detailed specs of the upload format can be found here: https://github.com/jaydenseric/graphql-multipart-request-spec
+ * Calculates available delivery options for a checkout.
  *
- * Requires one of the following permissions: MANAGE_PRODUCTS.
- */
-export type DigitalContentCreate = {
-  readonly content?: Maybe<DigitalContent>;
-  readonly errors: ReadonlyArray<ProductError>;
-  /** @deprecated Use `errors` field instead. */
-  readonly productErrors: ReadonlyArray<ProductError>;
-  readonly variant?: Maybe<ProductVariant>;
-};
-
-/**
- * Remove digital content assigned to given variant.
+ * Added in Saleor 3.23.
  *
- * Requires one of the following permissions: MANAGE_PRODUCTS.
+ * Triggers the following webhook events:
+ * - SHIPPING_LIST_METHODS_FOR_CHECKOUT (sync): Triggered to fetch external shipping methods.
+ * - CHECKOUT_FILTER_SHIPPING_METHODS (sync): Triggered to filter shipping methods.
  */
-export type DigitalContentDelete = {
-  readonly errors: ReadonlyArray<ProductError>;
-  /** @deprecated Use `errors` field instead. */
-  readonly productErrors: ReadonlyArray<ProductError>;
-  readonly variant?: Maybe<ProductVariant>;
+export type DeliveryOptionsCalculate = {
+  /** List of the available deliveries. */
+  readonly deliveries: ReadonlyArray<Delivery>;
+  readonly errors: ReadonlyArray<DeliveryOptionsCalculateError>;
 };
 
-export type DigitalContentInput = {
-  /** Overwrite default automatic_fulfillment setting for variant. */
-  readonly automaticFulfillment?: InputMaybe<Scalars['Boolean']['input']>;
-  /** Determines how many times a download link can be accessed by a customer. */
-  readonly maxDownloads?: InputMaybe<Scalars['Int']['input']>;
-  /**
-   * Fields required to update the digital content metadata. Can be read by any API client authorized to read the object it's attached to.
-   *
-   * Warning: never store sensitive information, including financial data such as credit card details.
-   */
-  readonly metadata?: InputMaybe<ReadonlyArray<MetadataInput>>;
-  /**
-   * Fields required to update the digital content private metadata. Requires permissions to modify and to read the metadata of the object it's attached to.
-   *
-   * Warning: never store sensitive information, including financial data such as credit card details.
-   */
-  readonly privateMetadata?: InputMaybe<ReadonlyArray<MetadataInput>>;
-  /** Determines for how many days a download link is active since it was generated. */
-  readonly urlValidDays?: InputMaybe<Scalars['Int']['input']>;
-  /** Use default digital content settings for this product. */
-  readonly useDefaultSettings: Scalars['Boolean']['input'];
+export type DeliveryOptionsCalculateError = {
+  /** The error code. */
+  readonly code: DeliveryOptionsCalculateErrorCode;
+  /** Name of a field that caused the error. A value of `null` indicates that the error isn't associated with a particular field. */
+  readonly field?: Maybe<Scalars['String']['output']>;
+  /** The error message. */
+  readonly message?: Maybe<Scalars['String']['output']>;
 };
 
-/**
- * Updates digital content.
- *
- * Requires one of the following permissions: MANAGE_PRODUCTS.
- */
-export type DigitalContentUpdate = {
-  readonly content?: Maybe<DigitalContent>;
-  readonly errors: ReadonlyArray<ProductError>;
-  /** @deprecated Use `errors` field instead. */
-  readonly productErrors: ReadonlyArray<ProductError>;
-  readonly variant?: Maybe<ProductVariant>;
-};
-
-export type DigitalContentUploadInput = {
-  /** Overwrite default automatic_fulfillment setting for variant. */
-  readonly automaticFulfillment?: InputMaybe<Scalars['Boolean']['input']>;
-  /** Represents an file in a multipart request. */
-  readonly contentFile: Scalars['Upload']['input'];
-  /** Determines how many times a download link can be accessed by a customer. */
-  readonly maxDownloads?: InputMaybe<Scalars['Int']['input']>;
-  /**
-   * Fields required to update the digital content metadata. Can be read by any API client authorized to read the object it's attached to.
-   *
-   * Warning: never store sensitive information, including financial data such as credit card details.
-   */
-  readonly metadata?: InputMaybe<ReadonlyArray<MetadataInput>>;
-  /**
-   * Fields required to update the digital content private metadata. Requires permissions to modify and to read the metadata of the object it's attached to.
-   *
-   * Warning: never store sensitive information, including financial data such as credit card details.
-   */
-  readonly privateMetadata?: InputMaybe<ReadonlyArray<MetadataInput>>;
-  /** Determines for how many days a download link is active since it was generated. */
-  readonly urlValidDays?: InputMaybe<Scalars['Int']['input']>;
-  /** Use default digital content settings for this product. */
-  readonly useDefaultSettings: Scalars['Boolean']['input'];
-};
-
-/** Represents a URL for digital content. */
-export type DigitalContentUrl = Node & {
-  /** Digital content associated with the URL. */
-  readonly content: DigitalContent;
-  /** Date and time when the digital content URL was created. */
-  readonly created: Scalars['DateTime']['output'];
-  /** Number of times digital content has been downloaded. */
-  readonly downloadNum: Scalars['Int']['output'];
-  /** The ID of the digital content URL. */
-  readonly id: Scalars['ID']['output'];
-  /** UUID of digital content. */
-  readonly token: Scalars['UUID']['output'];
-  /** URL for digital content. */
-  readonly url?: Maybe<Scalars['String']['output']>;
-};
-
-/**
- * Generate new URL to digital content.
- *
- * Requires one of the following permissions: MANAGE_PRODUCTS.
- */
-export type DigitalContentUrlCreate = {
-  readonly digitalContentUrl?: Maybe<DigitalContentUrl>;
-  readonly errors: ReadonlyArray<ProductError>;
-  /** @deprecated Use `errors` field instead. */
-  readonly productErrors: ReadonlyArray<ProductError>;
-};
-
-export type DigitalContentUrlCreateInput = {
-  /** Digital content ID which URL will belong to. */
-  readonly content: Scalars['ID']['input'];
-};
+export type DeliveryOptionsCalculateErrorCode =
+  | 'GRAPHQL_ERROR'
+  | 'INVALID'
+  | 'NOT_FOUND';
 
 export type DiscountError = {
   /** List of channels IDs which causes the error. */
@@ -6783,7 +7158,10 @@ export type DraftOrderCreateInput = {
   readonly user?: InputMaybe<Scalars['ID']['input']>;
   /** Email address of the customer. */
   readonly userEmail?: InputMaybe<Scalars['String']['input']>;
-  /** ID of the voucher associated with the order. */
+  /**
+   * ID of the voucher associated with the order.
+   * @deprecated Use `voucherCode` instead.
+   */
   readonly voucher?: InputMaybe<Scalars['ID']['input']>;
   /**
    * A code of the voucher associated with the order.
@@ -6891,7 +7269,10 @@ export type DraftOrderInput = {
   readonly user?: InputMaybe<Scalars['ID']['input']>;
   /** Email address of the customer. */
   readonly userEmail?: InputMaybe<Scalars['String']['input']>;
-  /** ID of the voucher associated with the order. */
+  /**
+   * ID of the voucher associated with the order.
+   * @deprecated Use `voucherCode` instead.
+   */
   readonly voucher?: InputMaybe<Scalars['ID']['input']>;
   /**
    * A code of the voucher associated with the order.
@@ -7304,8 +7685,6 @@ export type ExportScope =
  * Export voucher codes to csv/xlsx file.
  *
  * Added in Saleor 3.18.
- *
- * Note: this API is currently in Feature Preview and can be subject to changes at later point.
  *
  * Requires one of the following permissions: MANAGE_DISCOUNTS.
  *
@@ -7787,9 +8166,9 @@ export type GiftCard = Node & ObjectWithMetadata & {
    */
   readonly endDate?: Maybe<Scalars['DateTime']['output']>;
   /**
-   * List of events associated with the gift card.
+   * List of events associated with the gift card. Requires MANAGE_GIFT_CARD permission to access all events. Users with MANAGE_ORDERS permission can access only USED_IN_ORDER and REFUNDED_IN_ORDER events.
    *
-   * Requires one of the following permissions: MANAGE_GIFT_CARD.
+   * Requires one of the following permissions: MANAGE_GIFT_CARD, MANAGE_ORDERS.
    */
   readonly events: ReadonlyArray<GiftCardEvent>;
   /** Expiry date of the gift card. */
@@ -8206,6 +8585,7 @@ export type GiftCardEventsEnum =
   | 'EXPIRY_DATE_UPDATED'
   | 'ISSUED'
   | 'NOTE_ADDED'
+  | 'REFUNDED_IN_ORDER'
   | 'RESENT'
   | 'SENT_TO_CUSTOMER'
   | 'TAGS_UPDATED'
@@ -8252,6 +8632,55 @@ export type GiftCardMetadataUpdated = Event & {
   readonly recipient?: Maybe<App>;
   /** Saleor version that triggered the event. */
   readonly version?: Maybe<Scalars['String']['output']>;
+};
+
+/**
+ * Represents a gift card payment method used for a transaction.
+ *
+ * Added in Saleor 3.23.
+ */
+export type GiftCardPaymentMethodDetails = PaymentMethodDetails & {
+  /**
+   * Brand of the gift card.
+   *
+   * Added in Saleor 3.23.
+   */
+  readonly brand?: Maybe<Scalars['String']['output']>;
+  /**
+   * Indicates whether the gift card is a built-in Saleor gift card.
+   *
+   * Added in Saleor 3.23.
+   */
+  readonly isSaleorGiftcard: Scalars['Boolean']['output'];
+  /**
+   * Last characters of the gift card code. Max 4 characters.
+   *
+   * Added in Saleor 3.23.
+   */
+  readonly lastChars?: Maybe<Scalars['String']['output']>;
+  /** Name of the gift card. */
+  readonly name: Scalars['String']['output'];
+};
+
+export type GiftCardPaymentMethodDetailsInput = {
+  /**
+   * Brand of the gift card used for the transaction. Max length is 40 characters.
+   *
+   * Added in Saleor 3.23.
+   */
+  readonly brand?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Last characters of the gift card used for the transaction. Max length is 4 characters.
+   *
+   * Added in Saleor 3.23.
+   */
+  readonly lastChars?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Name of the payment method used for the transaction. Max length is 256 characters.
+   *
+   * Added in Saleor 3.23.
+   */
+  readonly name: Scalars['String']['input'];
 };
 
 /**
@@ -8346,6 +8775,8 @@ export type GiftCardSortField =
   | 'CURRENT_BALANCE'
   /** Sort gift cards by product. */
   | 'PRODUCT'
+  /** Sort gift cards by rank. Note: This option is available only with the `search` filter. */
+  | 'RANK'
   /** Sort gift cards by used by. */
   | 'USED_BY';
 
@@ -8507,10 +8938,6 @@ export type GroupCountableEdge = {
   /** The item at the end of the edge. */
   readonly node: Group;
 };
-
-export type HttpMethod =
-  | 'GET'
-  | 'POST';
 
 /** Thumbnail formats for icon images. */
 export type IconThumbnailFormatEnum =
@@ -8806,785 +9233,1565 @@ export type JobStatusEnum =
   | 'PENDING'
   | 'SUCCESS';
 
+/** Language code enum. It contains all the languages supported by Saleor. */
 export type LanguageCodeEnum =
+  /** Afrikaans */
   | 'AF'
+  /** Afrikaans (Namibia) */
   | 'AF_NA'
+  /** Afrikaans (South Africa) */
   | 'AF_ZA'
+  /** Aghem */
   | 'AGQ'
+  /** Aghem (Cameroon) */
   | 'AGQ_CM'
+  /** Akan */
   | 'AK'
+  /** Akan (Ghana) */
   | 'AK_GH'
+  /** Amharic */
   | 'AM'
+  /** Amharic (Ethiopia) */
   | 'AM_ET'
+  /** Arabic */
   | 'AR'
+  /** Arabic (United Arab Emirates) */
   | 'AR_AE'
+  /** Arabic (Bahrain) */
   | 'AR_BH'
+  /** Arabic (Djibouti) */
   | 'AR_DJ'
+  /** Arabic (Algeria) */
   | 'AR_DZ'
+  /** Arabic (Egypt) */
   | 'AR_EG'
+  /** Arabic (Western Sahara) */
   | 'AR_EH'
+  /** Arabic (Eritrea) */
   | 'AR_ER'
+  /** Arabic (Israel) */
   | 'AR_IL'
+  /** Arabic (Iraq) */
   | 'AR_IQ'
+  /** Arabic (Jordan) */
   | 'AR_JO'
+  /** Arabic (Comoros) */
   | 'AR_KM'
+  /** Arabic (Kuwait) */
   | 'AR_KW'
+  /** Arabic (Lebanon) */
   | 'AR_LB'
+  /** Arabic (Libya) */
   | 'AR_LY'
+  /** Arabic (Morocco) */
   | 'AR_MA'
+  /** Arabic (Mauritania) */
   | 'AR_MR'
+  /** Arabic (Oman) */
   | 'AR_OM'
+  /** Arabic (Palestinian Territories) */
   | 'AR_PS'
+  /** Arabic (Qatar) */
   | 'AR_QA'
+  /** Arabic (Saudi Arabia) */
   | 'AR_SA'
+  /** Arabic (Sudan) */
   | 'AR_SD'
+  /** Arabic (Somalia) */
   | 'AR_SO'
+  /** Arabic (South Sudan) */
   | 'AR_SS'
+  /** Arabic (Syria) */
   | 'AR_SY'
+  /** Arabic (Chad) */
   | 'AR_TD'
+  /** Arabic (Tunisia) */
   | 'AR_TN'
+  /** Arabic (Yemen) */
   | 'AR_YE'
+  /** Assamese */
   | 'AS'
+  /** Asu */
   | 'ASA'
+  /** Asu (Tanzania) */
   | 'ASA_TZ'
+  /** Asturian */
   | 'AST'
+  /** Asturian (Spain) */
   | 'AST_ES'
+  /** Assamese (India) */
   | 'AS_IN'
+  /** Azerbaijani */
   | 'AZ'
+  /** Azerbaijani (Cyrillic) */
   | 'AZ_CYRL'
+  /** Azerbaijani (Cyrillic, Azerbaijan) */
   | 'AZ_CYRL_AZ'
+  /** Azerbaijani (Latin) */
   | 'AZ_LATN'
+  /** Azerbaijani (Latin, Azerbaijan) */
   | 'AZ_LATN_AZ'
+  /** Basaa */
   | 'BAS'
+  /** Basaa (Cameroon) */
   | 'BAS_CM'
+  /** Belarusian */
   | 'BE'
+  /** Bemba */
   | 'BEM'
+  /** Bemba (Zambia) */
   | 'BEM_ZM'
+  /** Bena */
   | 'BEZ'
+  /** Bena (Tanzania) */
   | 'BEZ_TZ'
+  /** Belarusian (Belarus) */
   | 'BE_BY'
+  /** Bulgarian */
   | 'BG'
+  /** Bulgarian (Bulgaria) */
   | 'BG_BG'
+  /** Bambara */
   | 'BM'
+  /** Bambara (Mali) */
   | 'BM_ML'
+  /** Bangla */
   | 'BN'
+  /** Bangla (Bangladesh) */
   | 'BN_BD'
+  /** Bangla (India) */
   | 'BN_IN'
+  /** Tibetan */
   | 'BO'
+  /** Tibetan (China) */
   | 'BO_CN'
+  /** Tibetan (India) */
   | 'BO_IN'
+  /** Breton */
   | 'BR'
+  /** Bodo */
   | 'BRX'
+  /** Bodo (India) */
   | 'BRX_IN'
+  /** Breton (France) */
   | 'BR_FR'
+  /** Bosnian */
   | 'BS'
+  /** Bosnian (Cyrillic) */
   | 'BS_CYRL'
+  /** Bosnian (Cyrillic, Bosnia & Herzegovina) */
   | 'BS_CYRL_BA'
+  /** Bosnian (Latin) */
   | 'BS_LATN'
+  /** Bosnian (Latin, Bosnia & Herzegovina) */
   | 'BS_LATN_BA'
+  /** Catalan */
   | 'CA'
+  /** Catalan (Andorra) */
   | 'CA_AD'
+  /** Catalan (Spain) */
   | 'CA_ES'
+  /** Catalan (Spain, Valencian) */
   | 'CA_ES_VALENCIA'
+  /** Catalan (France) */
   | 'CA_FR'
+  /** Catalan (Italy) */
   | 'CA_IT'
+  /** Chakma */
   | 'CCP'
+  /** Chakma (Bangladesh) */
   | 'CCP_BD'
+  /** Chakma (India) */
   | 'CCP_IN'
+  /** Chechen */
   | 'CE'
+  /** Cebuano */
   | 'CEB'
+  /** Cebuano (Philippines) */
   | 'CEB_PH'
+  /** Chechen (Russia) */
   | 'CE_RU'
+  /** Chiga */
   | 'CGG'
+  /** Chiga (Uganda) */
   | 'CGG_UG'
+  /** Cherokee */
   | 'CHR'
+  /** Cherokee (United States) */
   | 'CHR_US'
+  /** Central Kurdish */
   | 'CKB'
+  /** Central Kurdish (Iraq) */
   | 'CKB_IQ'
+  /** Central Kurdish (Iran) */
   | 'CKB_IR'
+  /** Czech */
   | 'CS'
+  /** Czech (Czechia) */
   | 'CS_CZ'
+  /** Church Slavic */
   | 'CU'
+  /** Church Slavic (Russia) */
   | 'CU_RU'
+  /** Welsh */
   | 'CY'
+  /** Welsh (United Kingdom) */
   | 'CY_GB'
+  /** Danish */
   | 'DA'
+  /** Taita */
   | 'DAV'
+  /** Taita (Kenya) */
   | 'DAV_KE'
+  /** Danish (Denmark) */
   | 'DA_DK'
+  /** Danish (Greenland) */
   | 'DA_GL'
+  /** German */
   | 'DE'
+  /** German (Austria) */
   | 'DE_AT'
+  /** German (Belgium) */
   | 'DE_BE'
+  /** German (Switzerland) */
   | 'DE_CH'
+  /** German (Germany) */
   | 'DE_DE'
+  /** German (Italy) */
   | 'DE_IT'
+  /** German (Liechtenstein) */
   | 'DE_LI'
+  /** German (Luxembourg) */
   | 'DE_LU'
+  /** Zarma */
   | 'DJE'
+  /** Zarma (Niger) */
   | 'DJE_NE'
+  /** Lower Sorbian */
   | 'DSB'
+  /** Lower Sorbian (Germany) */
   | 'DSB_DE'
+  /** Duala */
   | 'DUA'
+  /** Duala (Cameroon) */
   | 'DUA_CM'
+  /** Jola-Fonyi */
   | 'DYO'
+  /** Jola-Fonyi (Senegal) */
   | 'DYO_SN'
+  /** Dzongkha */
   | 'DZ'
+  /** Dzongkha (Bhutan) */
   | 'DZ_BT'
+  /** Embu */
   | 'EBU'
+  /** Embu (Kenya) */
   | 'EBU_KE'
+  /** Ewe */
   | 'EE'
+  /** Ewe (Ghana) */
   | 'EE_GH'
+  /** Ewe (Togo) */
   | 'EE_TG'
+  /** Greek */
   | 'EL'
+  /** Greek (Cyprus) */
   | 'EL_CY'
+  /** Greek (Greece) */
   | 'EL_GR'
+  /** English */
   | 'EN'
+  /** English (United Arab Emirates) */
   | 'EN_AE'
+  /** English (Antigua & Barbuda) */
   | 'EN_AG'
+  /** English (Anguilla) */
   | 'EN_AI'
+  /** English (American Samoa) */
   | 'EN_AS'
+  /** English (Austria) */
   | 'EN_AT'
+  /** English (Australia) */
   | 'EN_AU'
+  /** English (Barbados) */
   | 'EN_BB'
+  /** English (Belgium) */
   | 'EN_BE'
+  /** English (Burundi) */
   | 'EN_BI'
+  /** English (Bermuda) */
   | 'EN_BM'
+  /** English (Bahamas) */
   | 'EN_BS'
+  /** English (Botswana) */
   | 'EN_BW'
+  /** English (Belize) */
   | 'EN_BZ'
+  /** English (Canada) */
   | 'EN_CA'
+  /** English (Cocos (Keeling) Islands) */
   | 'EN_CC'
+  /** English (Switzerland) */
   | 'EN_CH'
+  /** English (Cook Islands) */
   | 'EN_CK'
+  /** English (Cameroon) */
   | 'EN_CM'
+  /** English (Christmas Island) */
   | 'EN_CX'
+  /** English (Cyprus) */
   | 'EN_CY'
+  /** English (Germany) */
   | 'EN_DE'
+  /** English (Diego Garcia) */
   | 'EN_DG'
+  /** English (Denmark) */
   | 'EN_DK'
+  /** English (Dominica) */
   | 'EN_DM'
+  /** English (Eritrea) */
   | 'EN_ER'
+  /** English (Finland) */
   | 'EN_FI'
+  /** English (Fiji) */
   | 'EN_FJ'
+  /** English (Falkland Islands) */
   | 'EN_FK'
+  /** English (Micronesia) */
   | 'EN_FM'
+  /** English (United Kingdom) */
   | 'EN_GB'
+  /** English (Grenada) */
   | 'EN_GD'
+  /** English (Guernsey) */
   | 'EN_GG'
+  /** English (Ghana) */
   | 'EN_GH'
+  /** English (Gibraltar) */
   | 'EN_GI'
+  /** English (Gambia) */
   | 'EN_GM'
+  /** English (Guam) */
   | 'EN_GU'
+  /** English (Guyana) */
   | 'EN_GY'
+  /** English (Hong Kong SAR China) */
   | 'EN_HK'
+  /** English (Ireland) */
   | 'EN_IE'
+  /** English (Israel) */
   | 'EN_IL'
+  /** English (Isle of Man) */
   | 'EN_IM'
+  /** English (India) */
   | 'EN_IN'
+  /** English (British Indian Ocean Territory) */
   | 'EN_IO'
+  /** English (Jersey) */
   | 'EN_JE'
+  /** English (Jamaica) */
   | 'EN_JM'
+  /** English (Kenya) */
   | 'EN_KE'
+  /** English (Kiribati) */
   | 'EN_KI'
+  /** English (St. Kitts & Nevis) */
   | 'EN_KN'
+  /** English (Cayman Islands) */
   | 'EN_KY'
+  /** English (St. Lucia) */
   | 'EN_LC'
+  /** English (Liberia) */
   | 'EN_LR'
+  /** English (Lesotho) */
   | 'EN_LS'
+  /** English (Madagascar) */
   | 'EN_MG'
+  /** English (Marshall Islands) */
   | 'EN_MH'
+  /** English (Macao SAR China) */
   | 'EN_MO'
+  /** English (Northern Mariana Islands) */
   | 'EN_MP'
+  /** English (Montserrat) */
   | 'EN_MS'
+  /** English (Malta) */
   | 'EN_MT'
+  /** English (Mauritius) */
   | 'EN_MU'
+  /** English (Malawi) */
   | 'EN_MW'
+  /** English (Malaysia) */
   | 'EN_MY'
+  /** English (Namibia) */
   | 'EN_NA'
+  /** English (Norfolk Island) */
   | 'EN_NF'
+  /** English (Nigeria) */
   | 'EN_NG'
+  /** English (Netherlands) */
   | 'EN_NL'
+  /** English (Nauru) */
   | 'EN_NR'
+  /** English (Niue) */
   | 'EN_NU'
+  /** English (New Zealand) */
   | 'EN_NZ'
+  /** English (Papua New Guinea) */
   | 'EN_PG'
+  /** English (Philippines) */
   | 'EN_PH'
+  /** English (Pakistan) */
   | 'EN_PK'
+  /** English (Pitcairn Islands) */
   | 'EN_PN'
+  /** English (Puerto Rico) */
   | 'EN_PR'
+  /** English (Palau) */
   | 'EN_PW'
+  /** English (Rwanda) */
   | 'EN_RW'
+  /** English (Solomon Islands) */
   | 'EN_SB'
+  /** English (Seychelles) */
   | 'EN_SC'
+  /** English (Sudan) */
   | 'EN_SD'
+  /** English (Sweden) */
   | 'EN_SE'
+  /** English (Singapore) */
   | 'EN_SG'
+  /** English (St. Helena) */
   | 'EN_SH'
+  /** English (Slovenia) */
   | 'EN_SI'
+  /** English (Sierra Leone) */
   | 'EN_SL'
+  /** English (South Sudan) */
   | 'EN_SS'
+  /** English (Sint Maarten) */
   | 'EN_SX'
+  /** English (Eswatini) */
   | 'EN_SZ'
+  /** English (Turks & Caicos Islands) */
   | 'EN_TC'
+  /** English (Tokelau) */
   | 'EN_TK'
+  /** English (Tonga) */
   | 'EN_TO'
+  /** English (Trinidad & Tobago) */
   | 'EN_TT'
+  /** English (Tuvalu) */
   | 'EN_TV'
+  /** English (Tanzania) */
   | 'EN_TZ'
+  /** English (Uganda) */
   | 'EN_UG'
+  /** English (U.S. Outlying Islands) */
   | 'EN_UM'
+  /** English (United States) */
   | 'EN_US'
+  /** English (St. Vincent & Grenadines) */
   | 'EN_VC'
+  /** English (British Virgin Islands) */
   | 'EN_VG'
+  /** English (U.S. Virgin Islands) */
   | 'EN_VI'
+  /** English (Vanuatu) */
   | 'EN_VU'
+  /** English (Samoa) */
   | 'EN_WS'
+  /** English (South Africa) */
   | 'EN_ZA'
+  /** English (Zambia) */
   | 'EN_ZM'
+  /** English (Zimbabwe) */
   | 'EN_ZW'
+  /** Esperanto */
   | 'EO'
+  /** Spanish */
   | 'ES'
+  /** Spanish (Argentina) */
   | 'ES_AR'
+  /** Spanish (Bolivia) */
   | 'ES_BO'
+  /** Spanish (Brazil) */
   | 'ES_BR'
+  /** Spanish (Belize) */
   | 'ES_BZ'
+  /** Spanish (Chile) */
   | 'ES_CL'
+  /** Spanish (Colombia) */
   | 'ES_CO'
+  /** Spanish (Costa Rica) */
   | 'ES_CR'
+  /** Spanish (Cuba) */
   | 'ES_CU'
+  /** Spanish (Dominican Republic) */
   | 'ES_DO'
+  /** Spanish (Ceuta & Melilla) */
   | 'ES_EA'
+  /** Spanish (Ecuador) */
   | 'ES_EC'
+  /** Spanish (Spain) */
   | 'ES_ES'
+  /** Spanish (Equatorial Guinea) */
   | 'ES_GQ'
+  /** Spanish (Guatemala) */
   | 'ES_GT'
+  /** Spanish (Honduras) */
   | 'ES_HN'
+  /** Spanish (Canary Islands) */
   | 'ES_IC'
+  /** Spanish (Mexico) */
   | 'ES_MX'
+  /** Spanish (Nicaragua) */
   | 'ES_NI'
+  /** Spanish (Panama) */
   | 'ES_PA'
+  /** Spanish (Peru) */
   | 'ES_PE'
+  /** Spanish (Philippines) */
   | 'ES_PH'
+  /** Spanish (Puerto Rico) */
   | 'ES_PR'
+  /** Spanish (Paraguay) */
   | 'ES_PY'
+  /** Spanish (El Salvador) */
   | 'ES_SV'
+  /** Spanish (United States) */
   | 'ES_US'
+  /** Spanish (Uruguay) */
   | 'ES_UY'
+  /** Spanish (Venezuela) */
   | 'ES_VE'
+  /** Estonian */
   | 'ET'
+  /** Estonian (Estonia) */
   | 'ET_EE'
+  /** Basque */
   | 'EU'
+  /** Basque (Spain) */
   | 'EU_ES'
+  /** Ewondo */
   | 'EWO'
+  /** Ewondo (Cameroon) */
   | 'EWO_CM'
+  /** Persian */
   | 'FA'
+  /** Persian (Afghanistan) */
   | 'FA_AF'
+  /** Persian (Iran) */
   | 'FA_IR'
+  /** Fulah */
   | 'FF'
+  /** Fulah (Adlam) */
   | 'FF_ADLM'
+  /** Fulah (Adlam, Burkina Faso) */
   | 'FF_ADLM_BF'
+  /** Fulah (Adlam, Cameroon) */
   | 'FF_ADLM_CM'
+  /** Fulah (Adlam, Ghana) */
   | 'FF_ADLM_GH'
+  /** Fulah (Adlam, Gambia) */
   | 'FF_ADLM_GM'
+  /** Fulah (Adlam, Guinea) */
   | 'FF_ADLM_GN'
+  /** Fulah (Adlam, Guinea-Bissau) */
   | 'FF_ADLM_GW'
+  /** Fulah (Adlam, Liberia) */
   | 'FF_ADLM_LR'
+  /** Fulah (Adlam, Mauritania) */
   | 'FF_ADLM_MR'
+  /** Fulah (Adlam, Niger) */
   | 'FF_ADLM_NE'
+  /** Fulah (Adlam, Nigeria) */
   | 'FF_ADLM_NG'
+  /** Fulah (Adlam, Sierra Leone) */
   | 'FF_ADLM_SL'
+  /** Fulah (Adlam, Senegal) */
   | 'FF_ADLM_SN'
+  /** Fulah (Latin) */
   | 'FF_LATN'
+  /** Fulah (Latin, Burkina Faso) */
   | 'FF_LATN_BF'
+  /** Fulah (Latin, Cameroon) */
   | 'FF_LATN_CM'
+  /** Fulah (Latin, Ghana) */
   | 'FF_LATN_GH'
+  /** Fulah (Latin, Gambia) */
   | 'FF_LATN_GM'
+  /** Fulah (Latin, Guinea) */
   | 'FF_LATN_GN'
+  /** Fulah (Latin, Guinea-Bissau) */
   | 'FF_LATN_GW'
+  /** Fulah (Latin, Liberia) */
   | 'FF_LATN_LR'
+  /** Fulah (Latin, Mauritania) */
   | 'FF_LATN_MR'
+  /** Fulah (Latin, Niger) */
   | 'FF_LATN_NE'
+  /** Fulah (Latin, Nigeria) */
   | 'FF_LATN_NG'
+  /** Fulah (Latin, Sierra Leone) */
   | 'FF_LATN_SL'
+  /** Fulah (Latin, Senegal) */
   | 'FF_LATN_SN'
+  /** Finnish */
   | 'FI'
+  /** Filipino */
   | 'FIL'
+  /** Filipino (Philippines) */
   | 'FIL_PH'
+  /** Finnish (Finland) */
   | 'FI_FI'
+  /** Faroese */
   | 'FO'
+  /** Faroese (Denmark) */
   | 'FO_DK'
+  /** Faroese (Faroe Islands) */
   | 'FO_FO'
+  /** French */
   | 'FR'
+  /** French (Belgium) */
   | 'FR_BE'
+  /** French (Burkina Faso) */
   | 'FR_BF'
+  /** French (Burundi) */
   | 'FR_BI'
+  /** French (Benin) */
   | 'FR_BJ'
+  /** French (St. Barthélemy) */
   | 'FR_BL'
+  /** French (Canada) */
   | 'FR_CA'
+  /** French (Congo - Kinshasa) */
   | 'FR_CD'
+  /** French (Central African Republic) */
   | 'FR_CF'
+  /** French (Congo - Brazzaville) */
   | 'FR_CG'
+  /** French (Switzerland) */
   | 'FR_CH'
+  /** French (Côte d’Ivoire) */
   | 'FR_CI'
+  /** French (Cameroon) */
   | 'FR_CM'
+  /** French (Djibouti) */
   | 'FR_DJ'
+  /** French (Algeria) */
   | 'FR_DZ'
+  /** French (France) */
   | 'FR_FR'
+  /** French (Gabon) */
   | 'FR_GA'
+  /** French (French Guiana) */
   | 'FR_GF'
+  /** French (Guinea) */
   | 'FR_GN'
+  /** French (Guadeloupe) */
   | 'FR_GP'
+  /** French (Equatorial Guinea) */
   | 'FR_GQ'
+  /** French (Haiti) */
   | 'FR_HT'
+  /** French (Comoros) */
   | 'FR_KM'
+  /** French (Luxembourg) */
   | 'FR_LU'
+  /** French (Morocco) */
   | 'FR_MA'
+  /** French (Monaco) */
   | 'FR_MC'
+  /** French (St. Martin) */
   | 'FR_MF'
+  /** French (Madagascar) */
   | 'FR_MG'
+  /** French (Mali) */
   | 'FR_ML'
+  /** French (Martinique) */
   | 'FR_MQ'
+  /** French (Mauritania) */
   | 'FR_MR'
+  /** French (Mauritius) */
   | 'FR_MU'
+  /** French (New Caledonia) */
   | 'FR_NC'
+  /** French (Niger) */
   | 'FR_NE'
+  /** French (French Polynesia) */
   | 'FR_PF'
+  /** French (St. Pierre & Miquelon) */
   | 'FR_PM'
+  /** French (Réunion) */
   | 'FR_RE'
+  /** French (Rwanda) */
   | 'FR_RW'
+  /** French (Seychelles) */
   | 'FR_SC'
+  /** French (Senegal) */
   | 'FR_SN'
+  /** French (Syria) */
   | 'FR_SY'
+  /** French (Chad) */
   | 'FR_TD'
+  /** French (Togo) */
   | 'FR_TG'
+  /** French (Tunisia) */
   | 'FR_TN'
+  /** French (Vanuatu) */
   | 'FR_VU'
+  /** French (Wallis & Futuna) */
   | 'FR_WF'
+  /** French (Mayotte) */
   | 'FR_YT'
+  /** Friulian */
   | 'FUR'
+  /** Friulian (Italy) */
   | 'FUR_IT'
+  /** Western Frisian */
   | 'FY'
+  /** Western Frisian (Netherlands) */
   | 'FY_NL'
+  /** Irish */
   | 'GA'
+  /** Irish (United Kingdom) */
   | 'GA_GB'
+  /** Irish (Ireland) */
   | 'GA_IE'
+  /** Scottish Gaelic */
   | 'GD'
+  /** Scottish Gaelic (United Kingdom) */
   | 'GD_GB'
+  /** Galician */
   | 'GL'
+  /** Galician (Spain) */
   | 'GL_ES'
+  /** Swiss German */
   | 'GSW'
+  /** Swiss German (Switzerland) */
   | 'GSW_CH'
+  /** Swiss German (France) */
   | 'GSW_FR'
+  /** Swiss German (Liechtenstein) */
   | 'GSW_LI'
+  /** Gujarati */
   | 'GU'
+  /** Gusii */
   | 'GUZ'
+  /** Gusii (Kenya) */
   | 'GUZ_KE'
+  /** Gujarati (India) */
   | 'GU_IN'
+  /** Manx */
   | 'GV'
+  /** Manx (Isle of Man) */
   | 'GV_IM'
+  /** Hausa */
   | 'HA'
+  /** Hawaiian */
   | 'HAW'
+  /** Hawaiian (United States) */
   | 'HAW_US'
+  /** Hausa (Ghana) */
   | 'HA_GH'
+  /** Hausa (Niger) */
   | 'HA_NE'
+  /** Hausa (Nigeria) */
   | 'HA_NG'
+  /** Hebrew */
   | 'HE'
+  /** Hebrew (Israel) */
   | 'HE_IL'
+  /** Hindi */
   | 'HI'
+  /** Hindi (India) */
   | 'HI_IN'
+  /** Croatian */
   | 'HR'
+  /** Croatian (Bosnia & Herzegovina) */
   | 'HR_BA'
+  /** Croatian (Croatia) */
   | 'HR_HR'
+  /** Upper Sorbian */
   | 'HSB'
+  /** Upper Sorbian (Germany) */
   | 'HSB_DE'
+  /** Hungarian */
   | 'HU'
+  /** Hungarian (Hungary) */
   | 'HU_HU'
+  /** Armenian */
   | 'HY'
+  /** Armenian (Armenia) */
   | 'HY_AM'
+  /** Interlingua */
   | 'IA'
+  /** Indonesian */
   | 'ID'
+  /** Indonesian (Indonesia) */
   | 'ID_ID'
+  /** Igbo */
   | 'IG'
+  /** Igbo (Nigeria) */
   | 'IG_NG'
+  /** Sichuan Yi */
   | 'II'
+  /** Sichuan Yi (China) */
   | 'II_CN'
+  /** Icelandic */
   | 'IS'
+  /** Icelandic (Iceland) */
   | 'IS_IS'
+  /** Italian */
   | 'IT'
+  /** Italian (Switzerland) */
   | 'IT_CH'
+  /** Italian (Italy) */
   | 'IT_IT'
+  /** Italian (San Marino) */
   | 'IT_SM'
+  /** Italian (Vatican City) */
   | 'IT_VA'
+  /** Japanese */
   | 'JA'
+  /** Japanese (Japan) */
   | 'JA_JP'
+  /** Ngomba */
   | 'JGO'
+  /** Ngomba (Cameroon) */
   | 'JGO_CM'
+  /** Machame */
   | 'JMC'
+  /** Machame (Tanzania) */
   | 'JMC_TZ'
+  /** Javanese */
   | 'JV'
+  /** Javanese (Indonesia) */
   | 'JV_ID'
+  /** Georgian */
   | 'KA'
+  /** Kabyle */
   | 'KAB'
+  /** Kabyle (Algeria) */
   | 'KAB_DZ'
+  /** Kamba */
   | 'KAM'
+  /** Kamba (Kenya) */
   | 'KAM_KE'
+  /** Georgian (Georgia) */
   | 'KA_GE'
+  /** Makonde */
   | 'KDE'
+  /** Makonde (Tanzania) */
   | 'KDE_TZ'
+  /** Kabuverdianu */
   | 'KEA'
+  /** Kabuverdianu (Cape Verde) */
   | 'KEA_CV'
+  /** Koyra Chiini */
   | 'KHQ'
+  /** Koyra Chiini (Mali) */
   | 'KHQ_ML'
+  /** Kikuyu */
   | 'KI'
+  /** Kikuyu (Kenya) */
   | 'KI_KE'
+  /** Kazakh */
   | 'KK'
+  /** Kako */
   | 'KKJ'
+  /** Kako (Cameroon) */
   | 'KKJ_CM'
+  /** Kazakh (Kazakhstan) */
   | 'KK_KZ'
+  /** Kalaallisut */
   | 'KL'
+  /** Kalenjin */
   | 'KLN'
+  /** Kalenjin (Kenya) */
   | 'KLN_KE'
+  /** Kalaallisut (Greenland) */
   | 'KL_GL'
+  /** Khmer */
   | 'KM'
+  /** Khmer (Cambodia) */
   | 'KM_KH'
+  /** Kannada */
   | 'KN'
+  /** Kannada (India) */
   | 'KN_IN'
+  /** Korean */
   | 'KO'
+  /** Konkani */
   | 'KOK'
+  /** Konkani (India) */
   | 'KOK_IN'
+  /** Korean (North Korea) */
   | 'KO_KP'
+  /** Korean (South Korea) */
   | 'KO_KR'
+  /** Kashmiri */
   | 'KS'
+  /** Shambala */
   | 'KSB'
+  /** Shambala (Tanzania) */
   | 'KSB_TZ'
+  /** Bafia */
   | 'KSF'
+  /** Bafia (Cameroon) */
   | 'KSF_CM'
+  /** Colognian */
   | 'KSH'
+  /** Colognian (Germany) */
   | 'KSH_DE'
+  /** Kashmiri (Arabic) */
   | 'KS_ARAB'
+  /** Kashmiri (Arabic, India) */
   | 'KS_ARAB_IN'
+  /** Kurdish */
   | 'KU'
+  /** Kurdish (Turkey) */
   | 'KU_TR'
+  /** Cornish */
   | 'KW'
+  /** Cornish (United Kingdom) */
   | 'KW_GB'
+  /** Kyrgyz */
   | 'KY'
+  /** Kyrgyz (Kyrgyzstan) */
   | 'KY_KG'
+  /** Langi */
   | 'LAG'
+  /** Langi (Tanzania) */
   | 'LAG_TZ'
+  /** Luxembourgish */
   | 'LB'
+  /** Luxembourgish (Luxembourg) */
   | 'LB_LU'
+  /** Ganda */
   | 'LG'
+  /** Ganda (Uganda) */
   | 'LG_UG'
+  /** Lakota */
   | 'LKT'
+  /** Lakota (United States) */
   | 'LKT_US'
+  /** Lingala */
   | 'LN'
+  /** Lingala (Angola) */
   | 'LN_AO'
+  /** Lingala (Congo - Kinshasa) */
   | 'LN_CD'
+  /** Lingala (Central African Republic) */
   | 'LN_CF'
+  /** Lingala (Congo - Brazzaville) */
   | 'LN_CG'
+  /** Lao */
   | 'LO'
+  /** Lao (Laos) */
   | 'LO_LA'
+  /** Northern Luri */
   | 'LRC'
+  /** Northern Luri (Iraq) */
   | 'LRC_IQ'
+  /** Northern Luri (Iran) */
   | 'LRC_IR'
+  /** Lithuanian */
   | 'LT'
+  /** Lithuanian (Lithuania) */
   | 'LT_LT'
+  /** Luba-Katanga */
   | 'LU'
+  /** Luo */
   | 'LUO'
+  /** Luo (Kenya) */
   | 'LUO_KE'
+  /** Luyia */
   | 'LUY'
+  /** Luyia (Kenya) */
   | 'LUY_KE'
+  /** Luba-Katanga (Congo - Kinshasa) */
   | 'LU_CD'
+  /** Latvian */
   | 'LV'
+  /** Latvian (Latvia) */
   | 'LV_LV'
+  /** Maithili */
   | 'MAI'
+  /** Maithili (India) */
   | 'MAI_IN'
+  /** Masai */
   | 'MAS'
+  /** Masai (Kenya) */
   | 'MAS_KE'
+  /** Masai (Tanzania) */
   | 'MAS_TZ'
+  /** Meru */
   | 'MER'
+  /** Meru (Kenya) */
   | 'MER_KE'
+  /** Morisyen */
   | 'MFE'
+  /** Morisyen (Mauritius) */
   | 'MFE_MU'
+  /** Malagasy */
   | 'MG'
+  /** Makhuwa-Meetto */
   | 'MGH'
+  /** Makhuwa-Meetto (Mozambique) */
   | 'MGH_MZ'
+  /** Metaʼ */
   | 'MGO'
+  /** Metaʼ (Cameroon) */
   | 'MGO_CM'
+  /** Malagasy (Madagascar) */
   | 'MG_MG'
+  /** Maori */
   | 'MI'
+  /** Maori (New Zealand) */
   | 'MI_NZ'
+  /** Macedonian */
   | 'MK'
+  /** Macedonian (North Macedonia) */
   | 'MK_MK'
+  /** Malayalam */
   | 'ML'
+  /** Malayalam (India) */
   | 'ML_IN'
+  /** Mongolian */
   | 'MN'
+  /** Manipuri */
   | 'MNI'
+  /** Manipuri (Bangla) */
   | 'MNI_BENG'
+  /** Manipuri (Bangla, India) */
   | 'MNI_BENG_IN'
+  /** Mongolian (Mongolia) */
   | 'MN_MN'
+  /** Marathi */
   | 'MR'
+  /** Marathi (India) */
   | 'MR_IN'
+  /** Malay */
   | 'MS'
+  /** Malay (Brunei) */
   | 'MS_BN'
+  /** Malay (Indonesia) */
   | 'MS_ID'
+  /** Malay (Malaysia) */
   | 'MS_MY'
+  /** Malay (Singapore) */
   | 'MS_SG'
+  /** Maltese */
   | 'MT'
+  /** Maltese (Malta) */
   | 'MT_MT'
+  /** Mundang */
   | 'MUA'
+  /** Mundang (Cameroon) */
   | 'MUA_CM'
+  /** Burmese */
   | 'MY'
+  /** Burmese (Myanmar (Burma)) */
   | 'MY_MM'
+  /** Mazanderani */
   | 'MZN'
+  /** Mazanderani (Iran) */
   | 'MZN_IR'
+  /** Nama */
   | 'NAQ'
+  /** Nama (Namibia) */
   | 'NAQ_NA'
+  /** Norwegian Bokmål */
   | 'NB'
+  /** Norwegian Bokmål (Norway) */
   | 'NB_NO'
+  /** Norwegian Bokmål (Svalbard & Jan Mayen) */
   | 'NB_SJ'
+  /** North Ndebele */
   | 'ND'
+  /** Low German */
   | 'NDS'
+  /** Low German (Germany) */
   | 'NDS_DE'
+  /** Low German (Netherlands) */
   | 'NDS_NL'
+  /** North Ndebele (Zimbabwe) */
   | 'ND_ZW'
+  /** Nepali */
   | 'NE'
+  /** Nepali (India) */
   | 'NE_IN'
+  /** Nepali (Nepal) */
   | 'NE_NP'
+  /** Dutch */
   | 'NL'
+  /** Dutch (Aruba) */
   | 'NL_AW'
+  /** Dutch (Belgium) */
   | 'NL_BE'
+  /** Dutch (Caribbean Netherlands) */
   | 'NL_BQ'
+  /** Dutch (Curaçao) */
   | 'NL_CW'
+  /** Dutch (Netherlands) */
   | 'NL_NL'
+  /** Dutch (Suriname) */
   | 'NL_SR'
+  /** Dutch (Sint Maarten) */
   | 'NL_SX'
+  /** Kwasio */
   | 'NMG'
+  /** Kwasio (Cameroon) */
   | 'NMG_CM'
+  /** Norwegian Nynorsk */
   | 'NN'
+  /** Ngiemboon */
   | 'NNH'
+  /** Ngiemboon (Cameroon) */
   | 'NNH_CM'
+  /** Norwegian Nynorsk (Norway) */
   | 'NN_NO'
+  /** Nuer */
   | 'NUS'
+  /** Nuer (South Sudan) */
   | 'NUS_SS'
+  /** Nyankole */
   | 'NYN'
+  /** Nyankole (Uganda) */
   | 'NYN_UG'
+  /** Oromo */
   | 'OM'
+  /** Oromo (Ethiopia) */
   | 'OM_ET'
+  /** Oromo (Kenya) */
   | 'OM_KE'
+  /** Odia */
   | 'OR'
+  /** Odia (India) */
   | 'OR_IN'
+  /** Ossetic */
   | 'OS'
+  /** Ossetic (Georgia) */
   | 'OS_GE'
+  /** Ossetic (Russia) */
   | 'OS_RU'
+  /** Punjabi */
   | 'PA'
+  /** Punjabi (Arabic) */
   | 'PA_ARAB'
+  /** Punjabi (Arabic, Pakistan) */
   | 'PA_ARAB_PK'
+  /** Punjabi (Gurmukhi) */
   | 'PA_GURU'
+  /** Punjabi (Gurmukhi, India) */
   | 'PA_GURU_IN'
+  /** Nigerian Pidgin */
   | 'PCM'
+  /** Nigerian Pidgin (Nigeria) */
   | 'PCM_NG'
+  /** Polish */
   | 'PL'
+  /** Polish (Poland) */
   | 'PL_PL'
+  /** Prussian */
   | 'PRG'
+  /** Pashto */
   | 'PS'
+  /** Pashto (Afghanistan) */
   | 'PS_AF'
+  /** Pashto (Pakistan) */
   | 'PS_PK'
+  /** Portuguese */
   | 'PT'
+  /** Portuguese (Angola) */
   | 'PT_AO'
+  /** Portuguese (Brazil) */
   | 'PT_BR'
+  /** Portuguese (Switzerland) */
   | 'PT_CH'
+  /** Portuguese (Cape Verde) */
   | 'PT_CV'
+  /** Portuguese (Equatorial Guinea) */
   | 'PT_GQ'
+  /** Portuguese (Guinea-Bissau) */
   | 'PT_GW'
+  /** Portuguese (Luxembourg) */
   | 'PT_LU'
+  /** Portuguese (Macao SAR China) */
   | 'PT_MO'
+  /** Portuguese (Mozambique) */
   | 'PT_MZ'
+  /** Portuguese (Portugal) */
   | 'PT_PT'
+  /** Portuguese (São Tomé & Príncipe) */
   | 'PT_ST'
+  /** Portuguese (Timor-Leste) */
   | 'PT_TL'
+  /** Quechua */
   | 'QU'
+  /** Quechua (Bolivia) */
   | 'QU_BO'
+  /** Quechua (Ecuador) */
   | 'QU_EC'
+  /** Quechua (Peru) */
   | 'QU_PE'
+  /** Romansh */
   | 'RM'
+  /** Romansh (Switzerland) */
   | 'RM_CH'
+  /** Rundi */
   | 'RN'
+  /** Rundi (Burundi) */
   | 'RN_BI'
+  /** Romanian */
   | 'RO'
+  /** Rombo */
   | 'ROF'
+  /** Rombo (Tanzania) */
   | 'ROF_TZ'
+  /** Romanian (Moldova) */
   | 'RO_MD'
+  /** Romanian (Romania) */
   | 'RO_RO'
+  /** Russian */
   | 'RU'
+  /** Russian (Belarus) */
   | 'RU_BY'
+  /** Russian (Kyrgyzstan) */
   | 'RU_KG'
+  /** Russian (Kazakhstan) */
   | 'RU_KZ'
+  /** Russian (Moldova) */
   | 'RU_MD'
+  /** Russian (Russia) */
   | 'RU_RU'
+  /** Russian (Ukraine) */
   | 'RU_UA'
+  /** Kinyarwanda */
   | 'RW'
+  /** Rwa */
   | 'RWK'
+  /** Rwa (Tanzania) */
   | 'RWK_TZ'
+  /** Kinyarwanda (Rwanda) */
   | 'RW_RW'
+  /** Sakha */
   | 'SAH'
+  /** Sakha (Russia) */
   | 'SAH_RU'
+  /** Samburu */
   | 'SAQ'
+  /** Samburu (Kenya) */
   | 'SAQ_KE'
+  /** Santali */
   | 'SAT'
+  /** Santali (Ol Chiki) */
   | 'SAT_OLCK'
+  /** Santali (Ol Chiki, India) */
   | 'SAT_OLCK_IN'
+  /** Sangu */
   | 'SBP'
+  /** Sangu (Tanzania) */
   | 'SBP_TZ'
+  /** Sindhi */
   | 'SD'
+  /** Sindhi (Arabic) */
   | 'SD_ARAB'
+  /** Sindhi (Arabic, Pakistan) */
   | 'SD_ARAB_PK'
+  /** Sindhi (Devanagari) */
   | 'SD_DEVA'
+  /** Sindhi (Devanagari, India) */
   | 'SD_DEVA_IN'
+  /** Northern Sami */
   | 'SE'
+  /** Sena */
   | 'SEH'
+  /** Sena (Mozambique) */
   | 'SEH_MZ'
+  /** Koyraboro Senni */
   | 'SES'
+  /** Koyraboro Senni (Mali) */
   | 'SES_ML'
+  /** Northern Sami (Finland) */
   | 'SE_FI'
+  /** Northern Sami (Norway) */
   | 'SE_NO'
+  /** Northern Sami (Sweden) */
   | 'SE_SE'
+  /** Sango */
   | 'SG'
+  /** Sango (Central African Republic) */
   | 'SG_CF'
+  /** Tachelhit */
   | 'SHI'
+  /** Tachelhit (Latin) */
   | 'SHI_LATN'
+  /** Tachelhit (Latin, Morocco) */
   | 'SHI_LATN_MA'
+  /** Tachelhit (Tifinagh) */
   | 'SHI_TFNG'
+  /** Tachelhit (Tifinagh, Morocco) */
   | 'SHI_TFNG_MA'
+  /** Sinhala */
   | 'SI'
+  /** Sinhala (Sri Lanka) */
   | 'SI_LK'
+  /** Slovak */
   | 'SK'
+  /** Slovak (Slovakia) */
   | 'SK_SK'
+  /** Slovenian */
   | 'SL'
+  /** Slovenian (Slovenia) */
   | 'SL_SI'
+  /** Inari Sami */
   | 'SMN'
+  /** Inari Sami (Finland) */
   | 'SMN_FI'
+  /** Shona */
   | 'SN'
+  /** Shona (Zimbabwe) */
   | 'SN_ZW'
+  /** Somali */
   | 'SO'
+  /** Somali (Djibouti) */
   | 'SO_DJ'
+  /** Somali (Ethiopia) */
   | 'SO_ET'
+  /** Somali (Kenya) */
   | 'SO_KE'
+  /** Somali (Somalia) */
   | 'SO_SO'
+  /** Albanian */
   | 'SQ'
+  /** Albanian (Albania) */
   | 'SQ_AL'
+  /** Albanian (North Macedonia) */
   | 'SQ_MK'
+  /** Albanian (Kosovo) */
   | 'SQ_XK'
+  /** Serbian */
   | 'SR'
+  /** Serbian (Cyrillic) */
   | 'SR_CYRL'
+  /** Serbian (Cyrillic, Bosnia & Herzegovina) */
   | 'SR_CYRL_BA'
+  /** Serbian (Cyrillic, Montenegro) */
   | 'SR_CYRL_ME'
+  /** Serbian (Cyrillic, Serbia) */
   | 'SR_CYRL_RS'
+  /** Serbian (Cyrillic, Kosovo) */
   | 'SR_CYRL_XK'
+  /** Serbian (Latin) */
   | 'SR_LATN'
+  /** Serbian (Latin, Bosnia & Herzegovina) */
   | 'SR_LATN_BA'
+  /** Serbian (Latin, Montenegro) */
   | 'SR_LATN_ME'
+  /** Serbian (Latin, Serbia) */
   | 'SR_LATN_RS'
+  /** Serbian (Latin, Kosovo) */
   | 'SR_LATN_XK'
+  /** Sundanese */
   | 'SU'
+  /** Sundanese (Latin) */
   | 'SU_LATN'
+  /** Sundanese (Latin, Indonesia) */
   | 'SU_LATN_ID'
+  /** Swedish */
   | 'SV'
+  /** Swedish (Åland Islands) */
   | 'SV_AX'
+  /** Swedish (Finland) */
   | 'SV_FI'
+  /** Swedish (Sweden) */
   | 'SV_SE'
+  /** Swahili */
   | 'SW'
+  /** Swahili (Congo - Kinshasa) */
   | 'SW_CD'
+  /** Swahili (Kenya) */
   | 'SW_KE'
+  /** Swahili (Tanzania) */
   | 'SW_TZ'
+  /** Swahili (Uganda) */
   | 'SW_UG'
+  /** Tamil */
   | 'TA'
+  /** Tamil (India) */
   | 'TA_IN'
+  /** Tamil (Sri Lanka) */
   | 'TA_LK'
+  /** Tamil (Malaysia) */
   | 'TA_MY'
+  /** Tamil (Singapore) */
   | 'TA_SG'
+  /** Telugu */
   | 'TE'
+  /** Teso */
   | 'TEO'
+  /** Teso (Kenya) */
   | 'TEO_KE'
+  /** Teso (Uganda) */
   | 'TEO_UG'
+  /** Telugu (India) */
   | 'TE_IN'
+  /** Tajik */
   | 'TG'
+  /** Tajik (Tajikistan) */
   | 'TG_TJ'
+  /** Thai */
   | 'TH'
+  /** Thai (Thailand) */
   | 'TH_TH'
+  /** Tigrinya */
   | 'TI'
+  /** Tigrinya (Eritrea) */
   | 'TI_ER'
+  /** Tigrinya (Ethiopia) */
   | 'TI_ET'
+  /** Turkmen */
   | 'TK'
+  /** Turkmen (Turkmenistan) */
   | 'TK_TM'
+  /** Tongan */
   | 'TO'
+  /** Tongan (Tonga) */
   | 'TO_TO'
+  /** Turkish */
   | 'TR'
+  /** Turkish (Cyprus) */
   | 'TR_CY'
+  /** Turkish (Turkey) */
   | 'TR_TR'
+  /** Tatar */
   | 'TT'
+  /** Tatar (Russia) */
   | 'TT_RU'
+  /** Tasawaq */
   | 'TWQ'
+  /** Tasawaq (Niger) */
   | 'TWQ_NE'
+  /** Central Atlas Tamazight */
   | 'TZM'
+  /** Central Atlas Tamazight (Morocco) */
   | 'TZM_MA'
+  /** Uyghur */
   | 'UG'
+  /** Uyghur (China) */
   | 'UG_CN'
+  /** Ukrainian */
   | 'UK'
+  /** Ukrainian (Ukraine) */
   | 'UK_UA'
+  /** Urdu */
   | 'UR'
+  /** Urdu (India) */
   | 'UR_IN'
+  /** Urdu (Pakistan) */
   | 'UR_PK'
+  /** Uzbek */
   | 'UZ'
+  /** Uzbek (Arabic) */
   | 'UZ_ARAB'
+  /** Uzbek (Arabic, Afghanistan) */
   | 'UZ_ARAB_AF'
+  /** Uzbek (Cyrillic) */
   | 'UZ_CYRL'
+  /** Uzbek (Cyrillic, Uzbekistan) */
   | 'UZ_CYRL_UZ'
+  /** Uzbek (Latin) */
   | 'UZ_LATN'
+  /** Uzbek (Latin, Uzbekistan) */
   | 'UZ_LATN_UZ'
+  /** Vai */
   | 'VAI'
+  /** Vai (Latin) */
   | 'VAI_LATN'
+  /** Vai (Latin, Liberia) */
   | 'VAI_LATN_LR'
+  /** Vai (Vai) */
   | 'VAI_VAII'
+  /** Vai (Vai, Liberia) */
   | 'VAI_VAII_LR'
+  /** Vietnamese */
   | 'VI'
+  /** Vietnamese (Vietnam) */
   | 'VI_VN'
+  /** Volapük */
   | 'VO'
+  /** Vunjo */
   | 'VUN'
+  /** Vunjo (Tanzania) */
   | 'VUN_TZ'
+  /** Walser */
   | 'WAE'
+  /** Walser (Switzerland) */
   | 'WAE_CH'
+  /** Wolof */
   | 'WO'
+  /** Wolof (Senegal) */
   | 'WO_SN'
+  /** Xhosa */
   | 'XH'
+  /** Xhosa (South Africa) */
   | 'XH_ZA'
+  /** Soga */
   | 'XOG'
+  /** Soga (Uganda) */
   | 'XOG_UG'
+  /** Yangben */
   | 'YAV'
+  /** Yangben (Cameroon) */
   | 'YAV_CM'
+  /** Yiddish */
   | 'YI'
+  /** Yoruba */
   | 'YO'
+  /** Yoruba (Benin) */
   | 'YO_BJ'
+  /** Yoruba (Nigeria) */
   | 'YO_NG'
+  /** Cantonese */
   | 'YUE'
+  /** Cantonese (Simplified) */
   | 'YUE_HANS'
+  /** Cantonese (Simplified, China) */
   | 'YUE_HANS_CN'
+  /** Cantonese (Traditional) */
   | 'YUE_HANT'
+  /** Cantonese (Traditional, Hong Kong SAR China) */
   | 'YUE_HANT_HK'
+  /** Standard Moroccan Tamazight */
   | 'ZGH'
+  /** Standard Moroccan Tamazight (Morocco) */
   | 'ZGH_MA'
+  /** Chinese */
   | 'ZH'
+  /** Chinese (Simplified) */
   | 'ZH_HANS'
+  /** Chinese (Simplified, China) */
   | 'ZH_HANS_CN'
+  /** Chinese (Simplified, Hong Kong SAR China) */
   | 'ZH_HANS_HK'
+  /** Chinese (Simplified, Macao SAR China) */
   | 'ZH_HANS_MO'
+  /** Chinese (Simplified, Singapore) */
   | 'ZH_HANS_SG'
+  /** Chinese (Traditional) */
   | 'ZH_HANT'
+  /** Chinese (Traditional, Hong Kong SAR China) */
   | 'ZH_HANT_HK'
+  /** Chinese (Traditional, Macao SAR China) */
   | 'ZH_HANT_MO'
+  /** Chinese (Traditional, Taiwan) */
   | 'ZH_HANT_TW'
+  /** Zulu */
   | 'ZU'
+  /** Zulu (South Africa) */
   | 'ZU_ZA';
 
 export type LanguageDisplay = {
@@ -10603,6 +11810,22 @@ export type Mutation = {
   /** Install new app by using app manifest. Requires the following permissions: AUTHENTICATED_STAFF_USER and MANAGE_APPS. */
   readonly appInstall?: Maybe<AppInstall>;
   /**
+   * Add a problem to the calling app.
+   *
+   * Added in Saleor 3.22.
+   *
+   * Requires one of the following permissions: AUTHENTICATED_APP.
+   */
+  readonly appProblemCreate?: Maybe<AppProblemCreate>;
+  /**
+   * Dismiss problems for an app.
+   *
+   * Added in Saleor 3.22.
+   *
+   * Requires one of the following permissions: MANAGE_APPS, AUTHENTICATED_APP.
+   */
+  readonly appProblemDismiss?: Maybe<AppProblemDismiss>;
+  /**
    * Re-enable sync webhooks for provided app. Can be used to manually re-enable sync webhooks for the app before the cooldown period ends.
    *
    * Added in Saleor 3.21.
@@ -10936,6 +12159,7 @@ export type Mutation = {
    *
    * Triggers the following webhook events:
    * - SHIPPING_LIST_METHODS_FOR_CHECKOUT (sync): Triggered when updating the checkout delivery method with the external one.
+   * - CHECKOUT_FILTER_SHIPPING_METHODS (sync): Optionally triggered when cached filtered shipping methods are invalid.
    * - CHECKOUT_UPDATED (async): A checkout was updated.
    */
   readonly checkoutDeliveryMethodUpdate?: Maybe<CheckoutDeliveryMethodUpdate>;
@@ -11003,6 +12227,7 @@ export type Mutation = {
    *
    * Triggers the following webhook events:
    * - SHIPPING_LIST_METHODS_FOR_CHECKOUT (sync): Triggered when updating the checkout shipping method with the external one.
+   * - CHECKOUT_FILTER_SHIPPING_METHODS (sync): Optionally triggered when cached filtered shipping methods are invalid.
    * - CHECKOUT_UPDATED (async): A checkout was updated.
    * @deprecated Use `checkoutDeliveryMethodUpdate` instead.
    */
@@ -11146,29 +12371,15 @@ export type Mutation = {
    */
   readonly deleteWarehouse?: Maybe<WarehouseDelete>;
   /**
-   * Create new digital content. This mutation must be sent as a `multipart` request. More detailed specs of the upload format can be found here: https://github.com/jaydenseric/graphql-multipart-request-spec
+   * Calculates available delivery options for a checkout.
    *
-   * Requires one of the following permissions: MANAGE_PRODUCTS.
-   */
-  readonly digitalContentCreate?: Maybe<DigitalContentCreate>;
-  /**
-   * Remove digital content assigned to given variant.
+   * Added in Saleor 3.23.
    *
-   * Requires one of the following permissions: MANAGE_PRODUCTS.
+   * Triggers the following webhook events:
+   * - SHIPPING_LIST_METHODS_FOR_CHECKOUT (sync): Triggered to fetch external shipping methods.
+   * - CHECKOUT_FILTER_SHIPPING_METHODS (sync): Triggered to filter shipping methods.
    */
-  readonly digitalContentDelete?: Maybe<DigitalContentDelete>;
-  /**
-   * Updates digital content.
-   *
-   * Requires one of the following permissions: MANAGE_PRODUCTS.
-   */
-  readonly digitalContentUpdate?: Maybe<DigitalContentUpdate>;
-  /**
-   * Generate new URL to digital content.
-   *
-   * Requires one of the following permissions: MANAGE_PRODUCTS.
-   */
-  readonly digitalContentUrlCreate?: Maybe<DigitalContentUrlCreate>;
+  readonly deliveryOptionsCalculate?: Maybe<DeliveryOptionsCalculate>;
   /**
    * Deletes draft orders.
    *
@@ -11220,6 +12431,7 @@ export type Mutation = {
    * Triggers the following webhook events:
    * - NOTIFY_USER (async): A notification for the exported file.
    * - GIFT_CARD_EXPORT_COMPLETED (async): A notification for the exported file.
+   * @deprecated Export functionality is deprecated and will be removed. All data can be fetched via the GraphQL API and parsed into the desired format by apps or external tools.
    */
   readonly exportGiftCards?: Maybe<ExportGiftCards>;
   /**
@@ -11230,6 +12442,7 @@ export type Mutation = {
    * Triggers the following webhook events:
    * - NOTIFY_USER (async): A notification for the exported file.
    * - PRODUCT_EXPORT_COMPLETED (async): A notification for the exported file.
+   * @deprecated Export functionality is deprecated and will be removed. All data can be fetched via the GraphQL API and parsed into the desired format by apps or external tools.
    */
   readonly exportProducts?: Maybe<ExportProducts>;
   /**
@@ -11237,12 +12450,11 @@ export type Mutation = {
    *
    * Added in Saleor 3.18.
    *
-   * Note: this API is currently in Feature Preview and can be subject to changes at later point.
-   *
    * Requires one of the following permissions: MANAGE_DISCOUNTS.
    *
    * Triggers the following webhook events:
    * - VOUCHER_CODE_EXPORT_COMPLETED (async): A notification for the exported file.
+   * @deprecated Export functionality is deprecated and will be removed. All data can be fetched via the GraphQL API and parsed into the desired format by apps or external tools.
    */
   readonly exportVoucherCodes?: Maybe<ExportVoucherCodes>;
   /** Prepare external authentication URL for user by custom plugin. */
@@ -12873,6 +14085,16 @@ export type MutationAppInstallArgs = {
 };
 
 
+export type MutationAppProblemCreateArgs = {
+  input: AppProblemCreateInput;
+};
+
+
+export type MutationAppProblemDismissArgs = {
+  input: AppProblemDismissInput;
+};
+
+
 export type MutationAppReenableSyncWebhooksArgs = {
   appId: Scalars['ID']['input'];
 };
@@ -13334,25 +14556,8 @@ export type MutationDeleteWarehouseArgs = {
 };
 
 
-export type MutationDigitalContentCreateArgs = {
-  input: DigitalContentUploadInput;
-  variantId: Scalars['ID']['input'];
-};
-
-
-export type MutationDigitalContentDeleteArgs = {
-  variantId: Scalars['ID']['input'];
-};
-
-
-export type MutationDigitalContentUpdateArgs = {
-  input: DigitalContentInput;
-  variantId: Scalars['ID']['input'];
-};
-
-
-export type MutationDigitalContentUrlCreateArgs = {
-  input: DigitalContentUrlCreateInput;
+export type MutationDeliveryOptionsCalculateArgs = {
+  id: Scalars['ID']['input'];
 };
 
 
@@ -14708,12 +15913,6 @@ export type NavigationType =
   | 'MAIN'
   /** Secondary storefront navigation. */
   | 'SECONDARY';
-
-/** Represents the NEW_TAB target options for an app extension. */
-export type NewTabTargetOptions = {
-  /** HTTP method for New Tab target (GET or POST) */
-  readonly method: HttpMethod;
-};
 
 /** An object with an ID */
 export type Node = {
@@ -16350,7 +17549,6 @@ export type OrderLine = Node & ObjectWithMetadata & {
    * Requires one of the following permissions: MANAGE_PRODUCTS, MANAGE_ORDERS.
    */
   readonly allocations?: Maybe<ReadonlyArray<Allocation>>;
-  readonly digitalContentUrl?: Maybe<DigitalContentUrl>;
   /**
    * List of applied discounts
    *
@@ -17513,6 +18711,8 @@ export type PageSortField =
   | 'PUBLICATION_DATE'
   /** Sort pages by publication date. */
   | 'PUBLISHED_AT'
+  /** Sort pages by rank. Note: This option is available only with the `search` filter. */
+  | 'RANK'
   /** Sort pages by slug. */
   | 'SLUG'
   /** Sort pages by title. */
@@ -17852,7 +19052,7 @@ export type PageTypeUpdateInput = {
   readonly addAttributes?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
   /** Name of the page type. */
   readonly name?: InputMaybe<Scalars['String']['input']>;
-  /** List of attribute IDs to be assigned to the page type. */
+  /** List of attribute IDs to be unassigned from the page type. */
   readonly removeAttributes?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
   /** Page type slug. */
   readonly slug?: InputMaybe<Scalars['String']['input']>;
@@ -17927,6 +19127,20 @@ export type PasswordChange = {
   readonly user?: Maybe<User>;
 };
 
+/**
+ * Controls whether password-based authentication is allowed.
+ *
+ *     ENABLED - any user can log in with a password. This is the default behavior.
+ *     CUSTOMERS_ONLY - only customer users can log in with a password.
+ *         If a staff user logs in with a password, they will be treated as a customer
+ *         — the issued token will not contain any staff permissions.
+ *     DISABLED - no user can log in with a password.
+ */
+export type PasswordLoginModeEnum =
+  | 'CUSTOMERS_ONLY'
+  | 'DISABLED'
+  | 'ENABLED';
+
 /** Represents a payment of a given type. */
 export type Payment = Node & ObjectWithMetadata & {
   /**
@@ -17983,8 +19197,6 @@ export type Payment = Node & ObjectWithMetadata & {
   readonly modified: Scalars['DateTime']['output'];
   /** Order associated with a payment. */
   readonly order?: Maybe<Order>;
-  /** Informs whether this is a partial payment. */
-  readonly partial: Scalars['Boolean']['output'];
   /** Type of method used for payment. */
   readonly paymentMethodType: Scalars['String']['output'];
   /** List of private metadata items. Requires staff permissions to access. */
@@ -18391,13 +19603,19 @@ export type PaymentMethodDetailsFilterInput = {
 };
 
 /**
- * Details of the payment method used for the transaction. One of `card` or `other` is required.
+ * Details of the payment method used for the transaction. One of `card`, `other`, or `giftCard` is required.
  *
  * Added in Saleor 3.22.
  */
 export type PaymentMethodDetailsInput = {
   /** Details of the card payment method used for the transaction. */
   readonly card?: InputMaybe<CardPaymentMethodDetailsInput>;
+  /**
+   * Details of the gift card payment method used for the transaction.
+   *
+   * Added in Saleor 3.23.
+   */
+  readonly giftCard?: InputMaybe<GiftCardPaymentMethodDetailsInput>;
   /** Details of the non-card payment method used for this transaction. */
   readonly other?: InputMaybe<OtherPaymentMethodDetailsInput>;
 };
@@ -18542,9 +19760,11 @@ export type PaymentMethodTokenizationResult =
  *     The following types are possible:
  *     CARD - represents a card payment method.
  *     OTHER - represents any payment method that is not a card payment.
+ *     GIFT_CARD - represents a gift card payment method.
  */
 export type PaymentMethodTypeEnum =
   | 'CARD'
+  | 'GIFT_CARD'
   | 'OTHER';
 
 export type PaymentMethodTypeEnumFilterInput = {
@@ -19215,7 +20435,7 @@ export type ProductAttributeArgs = {
 
 /** Represents an individual item for sale in the storefront. */
 export type ProductImageByIdArgs = {
-  id?: InputMaybe<Scalars['ID']['input']>;
+  id: Scalars['ID']['input'];
 };
 
 
@@ -19233,7 +20453,7 @@ export type ProductMediaArgs = {
 
 /** Represents an individual item for sale in the storefront. */
 export type ProductMediaByIdArgs = {
-  id?: InputMaybe<Scalars['ID']['input']>;
+  id: Scalars['ID']['input'];
 };
 
 
@@ -19810,6 +21030,7 @@ export type ProductErrorCode =
   | 'DUPLICATED_INPUT_ITEM'
   | 'GRAPHQL_ERROR'
   | 'INVALID'
+  | 'INVALID_FILE_TYPE'
   | 'INVALID_PRICE'
   | 'MEDIA_ALREADY_ASSIGNED'
   | 'NOT_FOUND'
@@ -19821,7 +21042,7 @@ export type ProductErrorCode =
   | 'REQUIRED'
   | 'UNIQUE'
   | 'UNSUPPORTED_MEDIA_PROVIDER'
-  | 'VARIANT_NO_DIGITAL_CONTENT';
+  | 'UNSUPPORTED_MIME_TYPE';
 
 /** Event sent when product export is completed. */
 export type ProductExportCompleted = Event & {
@@ -20412,11 +21633,17 @@ export type ProductType = Node & ObjectWithMetadata & {
    * Requires one of the following permissions: MANAGE_PRODUCTS.
    */
   readonly availableAttributes?: Maybe<AttributeCountableConnection>;
-  /** Whether the product type has variants. */
+  /**
+   * Whether the product type has variants.
+   * @deprecated This is a leftover from the past Simple/Configurable product distinction. Products can have multiple variants regardless of this setting.
+   */
   readonly hasVariants: Scalars['Boolean']['output'];
   /** The ID of the product type. */
   readonly id: Scalars['ID']['output'];
-  /** Whether the product type is digital. */
+  /**
+   * Whether the product type is digital - doesn't have any effect, it's present for backward-compatibility.
+   * @deprecated Will be removed in v3.24.0, use metadata or attributes instead.
+   */
   readonly isDigital: Scalars['Boolean']['output'];
   /** Whether shipping is required for this product type. */
   readonly isShippingRequired: Scalars['Boolean']['output'];
@@ -20592,6 +21819,7 @@ export type ProductTypeEnum =
   | 'SHIPPABLE';
 
 export type ProductTypeFilterInput = {
+  /** @deprecated The field has no effect on the API behavior. This is a leftover from the past Simple/Configurable product distinction. Products can have multiple variants regardless of this setting. */
   readonly configurable?: InputMaybe<ProductTypeConfigurable>;
   readonly ids?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
   readonly kind?: InputMaybe<ProductTypeKindEnum>;
@@ -20602,9 +21830,12 @@ export type ProductTypeFilterInput = {
 };
 
 export type ProductTypeInput = {
-  /** Determines if product of this type has multiple variants. This option mainly simplifies product management in the dashboard. There is always at least one variant created under the hood. */
+  /**
+   * Determines if product of this type has multiple variants. This option mainly simplifies product management in the dashboard. There is always at least one variant created under the hood.
+   * @deprecated The field has no effect on the API behavior. This is a leftover from the past Simple/Configurable product distinction. Products can have multiple variants regardless of this setting.
+   */
   readonly hasVariants?: InputMaybe<Scalars['Boolean']['input']>;
-  /** Determines if products are digital. */
+  /** Determines if products are digital - doesn't have any effect, it's present for backward-compatibility. */
   readonly isDigital?: InputMaybe<Scalars['Boolean']['input']>;
   /** Determines if shipping is required for products of this variant. */
   readonly isShippingRequired?: InputMaybe<Scalars['Boolean']['input']>;
@@ -20736,12 +21967,6 @@ export type ProductVariant = Node & ObjectWithAttributes & ObjectWithMetadata & 
   readonly channelListings?: Maybe<ReadonlyArray<ProductVariantChannelListing>>;
   /** The date and time when the product variant was created. */
   readonly created: Scalars['DateTime']['output'];
-  /**
-   * Digital content for the product variant.
-   *
-   * Requires one of the following permissions: MANAGE_PRODUCTS.
-   */
-  readonly digitalContent?: Maybe<DigitalContent>;
   /** External ID of this product. */
   readonly externalReference?: Maybe<Scalars['String']['output']>;
   /** The ID of the product variant. */
@@ -21137,7 +22362,9 @@ export type ProductVariantChannelListing = Node & {
   /** The price of the variant. */
   readonly price?: Maybe<Money>;
   /**
-   * Prior price of the variant used for discount calculations.
+   * Previous price of the variant in channel. Useful for providing promotion information required by customer protection laws such as EU Omnibus directive.
+   *
+   *  Warning: This field is not updated automatically. Use Channel Listings mutation to update it manually.
    *
    * Added in Saleor 3.21.
    */
@@ -21295,6 +22522,30 @@ export type ProductVariantDeleted = Event & {
 /** Event sent when product variant is deleted. */
 export type ProductVariantDeletedProductVariantArgs = {
   channel?: InputMaybe<Scalars['String']['input']>;
+};
+
+/**
+ * Event sent when product variant discounted price is recalculated.
+ *
+ * Added in Saleor 3.22.
+ */
+export type ProductVariantDiscountedPriceUpdated = Event & {
+  /** The channel where the price changed. */
+  readonly channel: Channel;
+  /** Time of the event. */
+  readonly issuedAt?: Maybe<Scalars['DateTime']['output']>;
+  /** The user or application that triggered the event. */
+  readonly issuingPrincipal?: Maybe<IssuingPrincipal>;
+  /** The new discounted price. */
+  readonly newPrice: Money;
+  /** The previous discounted price. */
+  readonly previousPrice: Money;
+  /** The product variant the event relates to. */
+  readonly productVariant: ProductVariant;
+  /** The application receiving the webhook. */
+  readonly recipient?: Maybe<App>;
+  /** Saleor version that triggered the event. */
+  readonly version?: Maybe<Scalars['String']['output']>;
 };
 
 export type ProductVariantFilterInput = {
@@ -22738,18 +23989,6 @@ export type Query = {
    */
   readonly customers?: Maybe<UserCountableConnection>;
   /**
-   * Look up digital content by ID.
-   *
-   * Requires one of the following permissions: MANAGE_PRODUCTS.
-   */
-  readonly digitalContent?: Maybe<DigitalContent>;
-  /**
-   * List of digital content.
-   *
-   * Requires one of the following permissions: MANAGE_PRODUCTS.
-   */
-  readonly digitalContents?: Maybe<DigitalContentCountableConnection>;
-  /**
    * List of draft orders. The query will not initiate any external requests, including filtering available shipping methods, or performing external tax calculations.
    *
    * Requires one of the following permissions: MANAGE_ORDERS.
@@ -23004,9 +24243,17 @@ export type Query = {
   /**
    * Look up a transaction by ID.
    *
-   * Requires one of the following permissions: HANDLE_PAYMENTS.
+   * Requires one of the following permissions: HANDLE_PAYMENTS, MANAGE_ORDERS.
    */
   readonly transaction?: Maybe<TransactionItem>;
+  /**
+   * List of transactions. For apps with `MANAGE_ORDERS` permission, returns all transactions. For apps with just `HANDLE_PAYMENTS` permission, returns only transactions created by that app. For staff users, returns transactions from orders and checkouts in channels they have access to.
+   *
+   * Added in Saleor 3.22.
+   *
+   * Requires one of the following permissions: HANDLE_PAYMENTS, MANAGE_ORDERS.
+   */
+  readonly transactions?: Maybe<TransactionCountableConnection>;
   /**
    * Lookup a translatable item by ID.
    *
@@ -23064,7 +24311,7 @@ export type Query = {
 
 
 export type Query_EntitiesArgs = {
-  representations?: InputMaybe<ReadonlyArray<InputMaybe<Scalars['_Any']['input']>>>;
+  representations: ReadonlyArray<Scalars['_Any']['input']>;
 };
 
 
@@ -23209,19 +24456,6 @@ export type QueryCustomersArgs = {
   search?: InputMaybe<Scalars['String']['input']>;
   sortBy?: InputMaybe<UserSortingInput>;
   where?: InputMaybe<CustomerWhereInput>;
-};
-
-
-export type QueryDigitalContentArgs = {
-  id: Scalars['ID']['input'];
-};
-
-
-export type QueryDigitalContentsArgs = {
-  after?: InputMaybe<Scalars['String']['input']>;
-  before?: InputMaybe<Scalars['String']['input']>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-  last?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -23613,6 +24847,16 @@ export type QueryTransactionArgs = {
 };
 
 
+export type QueryTransactionsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  before?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  last?: InputMaybe<Scalars['Int']['input']>;
+  sortBy?: InputMaybe<TransactionSortingInput>;
+  where?: InputMaybe<TransactionWhereInput>;
+};
+
+
 export type QueryTranslationArgs = {
   id: Scalars['ID']['input'];
   kind: TranslatableKinds;
@@ -23753,7 +24997,7 @@ export type RefundSettingsErrorCode =
 export type RefundSettingsUpdate = {
   readonly errors: ReadonlyArray<RefundSettingsUpdateError>;
   /** Refund settings. */
-  readonly refundSettings: RefundSettings;
+  readonly refundSettings?: Maybe<RefundSettings>;
   /** @deprecated Use `errors` field instead. */
   readonly refundSettingsErrors: ReadonlyArray<RefundSettingsUpdateError>;
 };
@@ -24503,7 +25747,10 @@ export type ShippingMethod = Node & ObjectWithMetadata & {
   readonly id: Scalars['ID']['output'];
   /** Maximum delivery days for this shipping method. */
   readonly maximumDeliveryDays?: Maybe<Scalars['Int']['output']>;
-  /** Maximum order price for this shipping method. */
+  /**
+   * Maximum order price for this shipping method.
+   * @deprecated Field no longer supported
+   */
   readonly maximumOrderPrice?: Maybe<Money>;
   /**
    * Maximum order weight for this shipping method.
@@ -24524,7 +25771,10 @@ export type ShippingMethod = Node & ObjectWithMetadata & {
   readonly metafields?: Maybe<Scalars['Metadata']['output']>;
   /** Minimum delivery days for this shipping method. */
   readonly minimumDeliveryDays?: Maybe<Scalars['Int']['output']>;
-  /** Minimal order price for this shipping method. */
+  /**
+   * Minimal order price for this shipping method.
+   * @deprecated Field no longer supported
+   */
   readonly minimumOrderPrice?: Maybe<Money>;
   /**
    * Minimum order weight for this shipping method.
@@ -25295,12 +26545,6 @@ export type Shop = ObjectWithMetadata & {
    * Requires one of the following permissions: MANAGE_SETTINGS.
    */
   readonly allowLoginWithoutConfirmation?: Maybe<Scalars['Boolean']['output']>;
-  /**
-   * Enable automatic fulfillment for all digital products.
-   *
-   * Requires one of the following permissions: MANAGE_SETTINGS.
-   */
-  readonly automaticFulfillmentDigitalProducts?: Maybe<Scalars['Boolean']['output']>;
   /** List of available external authentications. */
   readonly availableExternalAuthentications: ReadonlyArray<ExternalAuthentication>;
   /** List of available payment gateways. */
@@ -25334,18 +26578,6 @@ export type Shop = ObjectWithMetadata & {
   readonly customerSetPasswordUrl?: Maybe<Scalars['String']['output']>;
   /** Shop's default country. */
   readonly defaultCountry?: Maybe<CountryDisplay>;
-  /**
-   * Default number of max downloads per digital content URL.
-   *
-   * Requires one of the following permissions: MANAGE_SETTINGS.
-   */
-  readonly defaultDigitalMaxDownloads?: Maybe<Scalars['Int']['output']>;
-  /**
-   * Default number of days which digital content URL will be valid.
-   *
-   * Requires one of the following permissions: MANAGE_SETTINGS.
-   */
-  readonly defaultDigitalUrlValidDays?: Maybe<Scalars['Int']['output']>;
   /**
    * Default shop's email sender's address.
    *
@@ -25415,10 +26647,24 @@ export type Shop = ObjectWithMetadata & {
   readonly metafields?: Maybe<Scalars['Metadata']['output']>;
   /** Shop's name. */
   readonly name: Scalars['String']['output'];
+  /**
+   * Controls whether password-based authentication is allowed.
+   *
+   * Added in Saleor 3.23.
+   */
+  readonly passwordLoginMode: PasswordLoginModeEnum;
   /** List of available permissions. */
   readonly permissions: ReadonlyArray<Permission>;
   /** List of possible phone prefixes. */
   readonly phonePrefixes: ReadonlyArray<Scalars['String']['output']>;
+  /**
+   * When enabled, address fields that are not valid for a given country (according to Google's i18n address data) will be preserved instead of being removed during validation. Validation errors are still returned.
+   *
+   * Added in Saleor 3.22.
+   *
+   * Requires one of the following permissions: MANAGE_SETTINGS.
+   */
+  readonly preserveAllAddressFields: Scalars['Boolean']['output'];
   /** List of private metadata items. Requires staff permissions to access. */
   readonly privateMetadata: ReadonlyArray<MetadataItem>;
   /**
@@ -25453,6 +26699,13 @@ export type Shop = ObjectWithMetadata & {
   readonly trackInventoryByDefault?: Maybe<Scalars['Boolean']['output']>;
   /** Returns translated shop fields for the given language code. */
   readonly translation?: Maybe<ShopTranslation>;
+  /**
+   * Use legacy update webhook emission. When enabled, update webhooks (e.g. `customerUpdated`,`productVariantUpdated`) are sent even when only metadata changes. When disabled, update webhooks are not sent for metadata-only changes; only metadata-specific webhooks (e.g., `customerMetadataUpdated`, `productVariantMetadataUpdated`) are sent.
+   *
+   * Added in Saleor 3.22.
+   * @deprecated Field no longer supported
+   */
+  readonly useLegacyUpdateWebhookEmission?: Maybe<Scalars['Boolean']['output']>;
   /**
    * Saleor API version.
    *
@@ -25553,6 +26806,7 @@ export type ShopErrorCode =
   | 'GRAPHQL_ERROR'
   | 'INVALID'
   | 'NOT_FOUND'
+  | 'PASSWORD_AUTH_RESTRICTION'
   | 'REQUIRED'
   | 'UNIQUE';
 
@@ -25586,8 +26840,6 @@ export type ShopMetadataUpdated = Event & {
 export type ShopSettingsInput = {
   /** Enable possibility to login without account confirmation. */
   readonly allowLoginWithoutConfirmation?: InputMaybe<Scalars['Boolean']['input']>;
-  /** Enable automatic fulfillment for all digital products. */
-  readonly automaticFulfillmentDigitalProducts?: InputMaybe<Scalars['Boolean']['input']>;
   /**
    * Charge taxes on shipping.
    * @deprecated To enable taxes for a shipping method, assign a tax class to the shipping method with `shippingPriceCreate` or `shippingPriceUpdate` mutations.
@@ -25595,10 +26847,6 @@ export type ShopSettingsInput = {
   readonly chargeTaxesOnShipping?: InputMaybe<Scalars['Boolean']['input']>;
   /** URL of a view where customers can set their password. */
   readonly customerSetPasswordUrl?: InputMaybe<Scalars['String']['input']>;
-  /** Default number of max downloads per digital content URL. */
-  readonly defaultDigitalMaxDownloads?: InputMaybe<Scalars['Int']['input']>;
-  /** Default number of days which digital content URL will be valid. */
-  readonly defaultDigitalUrlValidDays?: InputMaybe<Scalars['Int']['input']>;
   /** Default email sender's address. */
   readonly defaultMailSenderAddress?: InputMaybe<Scalars['String']['input']>;
   /** Default email sender's name. */
@@ -25634,6 +26882,18 @@ export type ShopSettingsInput = {
    */
   readonly metadata?: InputMaybe<ReadonlyArray<MetadataInput>>;
   /**
+   * Controls whether password-based authentication is allowed.
+   *
+   * Added in Saleor 3.23.
+   */
+  readonly passwordLoginMode?: InputMaybe<PasswordLoginModeEnum>;
+  /**
+   * When enabled, address fields that are not valid for a given country (according to Google's i18n address data) will be preserved instead of being removed during validation. Validation errors are still returned.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly preserveAllAddressFields?: InputMaybe<Scalars['Boolean']['input']>;
+  /**
    * Shop private metadata. Requires permissions to modify and to read the metadata of the object it's attached to.
    *
    * Warning: never store sensitive information, including financial data such as credit card details.
@@ -25645,6 +26905,13 @@ export type ShopSettingsInput = {
   readonly reserveStockDurationAuthenticatedUser?: InputMaybe<Scalars['Int']['input']>;
   /** This field is used as a default value for `ProductVariant.trackInventory`. */
   readonly trackInventoryByDefault?: InputMaybe<Scalars['Boolean']['input']>;
+  /**
+   * Use legacy update webhook emission. When enabled, update webhooks (e.g. `customerUpdated`,`productVariantUpdated`) are sent even when only metadata changes. When disabled, update webhooks are not sent for metadata-only changes; only metadata-specific webhooks (e.g., `customerMetadataUpdated`, `productVariantMetadataUpdated`) are sent.
+   *
+   * Added in Saleor 3.22.
+   * @deprecated Field no longer supported
+   */
+  readonly useLegacyUpdateWebhookEmission?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 /**
@@ -26383,6 +27650,14 @@ export type Subscription = {
    * Note: this API is currently in Feature Preview and can be subject to changes at later point.
    */
   readonly orderUpdated?: Maybe<OrderUpdated>;
+  /**
+   * Event sent when product variant discounted price is recalculated.
+   *
+   * Added in Saleor 3.22.
+   *
+   * Note: this API is currently in Feature Preview and can be subject to changes at later point.
+   */
+  readonly productVariantDiscountedPriceUpdated?: Maybe<ProductVariantDiscountedPriceUpdated>;
 };
 
 
@@ -26482,6 +27757,11 @@ export type SubscriptionOrderRefundedArgs = {
 
 
 export type SubscriptionOrderUpdatedArgs = {
+  channels?: InputMaybe<ReadonlyArray<Scalars['String']['input']>>;
+};
+
+
+export type SubscriptionProductVariantDiscountedPriceUpdatedArgs = {
   channels?: InputMaybe<ReadonlyArray<Scalars['String']['input']>>;
 };
 
@@ -27193,6 +28473,21 @@ export type TransactionChargeRequested = Event & {
   readonly version?: Maybe<Scalars['String']['output']>;
 };
 
+export type TransactionCountableConnection = {
+  readonly edges: ReadonlyArray<TransactionCountableEdge>;
+  /** Pagination data for this connection. */
+  readonly pageInfo: PageInfo;
+  /** A total count of items in the collection. */
+  readonly totalCount?: Maybe<Scalars['Int']['output']>;
+};
+
+export type TransactionCountableEdge = {
+  /** A cursor for use in pagination. */
+  readonly cursor: Scalars['String']['output'];
+  /** The item at the end of the edge. */
+  readonly node: TransactionItem;
+};
+
 /**
  * Creates transaction for checkout or order.
  *
@@ -27287,6 +28582,26 @@ export type TransactionEvent = Node & {
   readonly type?: Maybe<TransactionEventTypeEnum>;
 };
 
+/**
+ * Filter input for transaction events data.
+ *
+ * Added in Saleor 3.23.
+ */
+export type TransactionEventFilterInput = {
+  /**
+   * Filter transaction events by created at date.
+   *
+   * Added in Saleor 3.23.
+   */
+  readonly createdAt?: InputMaybe<DateTimeRangeInput>;
+  /**
+   * Filter transaction events by type.
+   *
+   * Added in Saleor 3.23.
+   */
+  readonly type?: InputMaybe<TransactionEventTypeEnumFilterInput>;
+};
+
 export type TransactionEventInput = {
   /** The message related to the event. */
   readonly message?: InputMaybe<Scalars['String']['input']>;
@@ -27378,12 +28693,25 @@ export type TransactionEventTypeEnum =
   | 'REFUND_REVERSE'
   | 'REFUND_SUCCESS';
 
+export type TransactionEventTypeEnumFilterInput = {
+  /** The value equal to. */
+  readonly eq?: InputMaybe<TransactionEventTypeEnum>;
+  /** The value included in. */
+  readonly oneOf?: InputMaybe<ReadonlyArray<TransactionEventTypeEnum>>;
+};
+
 /** Filter input for transactions. */
 export type TransactionFilterInput = {
   /** Filter by metadata fields of transactions. */
   readonly metadata?: InputMaybe<MetadataFilterInput>;
   /** Filter by payment method details used to pay for the order. */
   readonly paymentMethodDetails?: InputMaybe<PaymentMethodDetailsFilterInput>;
+  /**
+   * Filter by PSP reference of transactions.
+   *
+   * Added in Saleor 3.22.
+   */
+  readonly pspReference?: InputMaybe<StringFilterInput>;
 };
 
 /**
@@ -27720,6 +29048,27 @@ export type TransactionRequestRefundForGrantedRefundErrorCode =
   | 'REFUND_ALREADY_PROCESSED'
   | 'REFUND_IS_PENDING';
 
+export type TransactionSortField =
+  /**
+   * Sort transactions by creation date.
+   *
+   * Added in Saleor 3.23.
+   */
+  | 'CREATED_AT'
+  /**
+   * Sort transactions by modification date.
+   *
+   * Added in Saleor 3.23.
+   */
+  | 'MODIFIED_AT';
+
+export type TransactionSortingInput = {
+  /** Specifies the direction in which to sort transactions. */
+  readonly direction: OrderDirection;
+  /** Sort transactions by the selected field. */
+  readonly field: TransactionSortField;
+};
+
 /**
  * Update transaction.
  *
@@ -27784,6 +29133,36 @@ export type TransactionUpdateInput = {
   readonly privateMetadata?: InputMaybe<ReadonlyArray<MetadataInput>>;
   /** PSP Reference of the transaction. */
   readonly pspReference?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type TransactionWhereInput = {
+  /** List of conditions that must be met. */
+  readonly AND?: InputMaybe<ReadonlyArray<TransactionWhereInput>>;
+  /** A list of conditions of which at least one must be met. */
+  readonly OR?: InputMaybe<ReadonlyArray<TransactionWhereInput>>;
+  /** Filter by app identifier. */
+  readonly appIdentifier?: InputMaybe<StringFilterInput>;
+  /**
+   * Filter transactions by created at date.
+   *
+   * Added in Saleor 3.23.
+   */
+  readonly createdAt?: InputMaybe<DateTimeRangeInput>;
+  /**
+   * Filter by transaction events. Each list item represents conditions that must be satisfied by a single event. The filter matches transactions that have related events meeting all specified groups of conditions.
+   *
+   * Added in Saleor 3.23.
+   */
+  readonly events?: InputMaybe<ReadonlyArray<TransactionEventFilterInput>>;
+  readonly ids?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
+  /**
+   * Filter transactions by modified at date.
+   *
+   * Added in Saleor 3.23.
+   */
+  readonly modifiedAt?: InputMaybe<DateTimeRangeInput>;
+  /** Filter by PSP reference. */
+  readonly pspReference?: InputMaybe<StringFilterInput>;
 };
 
 export type TranslatableItem = AttributeTranslatableContent | AttributeValueTranslatableContent | CategoryTranslatableContent | CollectionTranslatableContent | MenuItemTranslatableContent | PageTranslatableContent | ProductTranslatableContent | ProductVariantTranslatableContent | PromotionRuleTranslatableContent | PromotionTranslatableContent | SaleTranslatableContent | ShippingMethodTranslatableContent | VoucherTranslatableContent;
@@ -27938,7 +29317,9 @@ export type UploadError = {
 };
 
 export type UploadErrorCode =
-  | 'GRAPHQL_ERROR';
+  | 'GRAPHQL_ERROR'
+  | 'INVALID_FILE_TYPE'
+  | 'UNSUPPORTED_MIME_TYPE';
 
 /** Represents user data. */
 export type User = Node & ObjectWithMetadata & {
@@ -28097,6 +29478,7 @@ export type UserOrdersArgs = {
   before?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
   last?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<CustomerOrderWhereInput>;
 };
 
 
@@ -28249,7 +29631,9 @@ export type UserSortField =
   /** Sort users by last name. */
   | 'LAST_NAME'
   /** Sort users by order count. */
-  | 'ORDER_COUNT';
+  | 'ORDER_COUNT'
+  /** Sort users by rank. Note: This option is available only with the `search` filter. */
+  | 'RANK';
 
 export type UserSortingInput = {
   /** Specifies the direction in which to sort users. */
@@ -29753,6 +31137,7 @@ export type WebhookEventTypeAsyncEnum =
   | 'PRODUCT_VARIANT_CREATED'
   /** A product variant is deleted. Warning: this event will not be executed when parent product has been deleted. Check PRODUCT_DELETED. */
   | 'PRODUCT_VARIANT_DELETED'
+  | 'PRODUCT_VARIANT_DISCOUNTED_PRICE_UPDATED'
   /** A product variant metadata is updated. */
   | 'PRODUCT_VARIANT_METADATA_UPDATED'
   /** A product variant is out of stock. */
@@ -30078,6 +31463,7 @@ export type WebhookEventTypeEnum =
   | 'PRODUCT_VARIANT_CREATED'
   /** A product variant is deleted. Warning: this event will not be executed when parent product has been deleted. Check PRODUCT_DELETED. */
   | 'PRODUCT_VARIANT_DELETED'
+  | 'PRODUCT_VARIANT_DISCOUNTED_PRICE_UPDATED'
   /** A product variant metadata is updated. */
   | 'PRODUCT_VARIANT_METADATA_UPDATED'
   /** A product variant is out of stock. */
@@ -30319,6 +31705,7 @@ export type WebhookSampleEventTypeEnum =
   | 'PRODUCT_VARIANT_BACK_IN_STOCK'
   | 'PRODUCT_VARIANT_CREATED'
   | 'PRODUCT_VARIANT_DELETED'
+  | 'PRODUCT_VARIANT_DISCOUNTED_PRICE_UPDATED'
   | 'PRODUCT_VARIANT_METADATA_UPDATED'
   | 'PRODUCT_VARIANT_OUT_OF_STOCK'
   | 'PRODUCT_VARIANT_STOCK_UPDATED'
@@ -30449,12 +31836,6 @@ export type WeightUnitsEnum =
   | 'LB'
   | 'OZ'
   | 'TONNE';
-
-/** Represents the WIDGET target options for an app extension. */
-export type WidgetTargetOptions = {
-  /** HTTP method for Widget target (GET or POST) */
-  readonly method: HttpMethod;
-};
 
 /** _Entity union as defined by Federation spec. */
 export type _Entity = Address | App | Category | Collection | Group | Order | PageType | Product | ProductMedia | ProductType | ProductVariant | User;
@@ -30690,6 +32071,8 @@ type EventMetadata_ProductVariantCreated_Fragment = { readonly version?: string 
 
 type EventMetadata_ProductVariantDeleted_Fragment = { readonly version?: string | null, readonly issuedAt?: string | null, readonly recipient?: { readonly id: string } | null };
 
+type EventMetadata_ProductVariantDiscountedPriceUpdated_Fragment = { readonly version?: string | null, readonly issuedAt?: string | null, readonly recipient?: { readonly id: string } | null };
+
 type EventMetadata_ProductVariantMetadataUpdated_Fragment = { readonly version?: string | null, readonly issuedAt?: string | null, readonly recipient?: { readonly id: string } | null };
 
 type EventMetadata_ProductVariantOutOfStock_Fragment = { readonly version?: string | null, readonly issuedAt?: string | null, readonly recipient?: { readonly id: string } | null };
@@ -30790,7 +32173,7 @@ type EventMetadata_WarehouseMetadataUpdated_Fragment = { readonly version?: stri
 
 type EventMetadata_WarehouseUpdated_Fragment = { readonly version?: string | null, readonly issuedAt?: string | null, readonly recipient?: { readonly id: string } | null };
 
-export type EventMetadataFragment = EventMetadata_AccountChangeEmailRequested_Fragment | EventMetadata_AccountConfirmationRequested_Fragment | EventMetadata_AccountConfirmed_Fragment | EventMetadata_AccountDeleteRequested_Fragment | EventMetadata_AccountDeleted_Fragment | EventMetadata_AccountEmailChanged_Fragment | EventMetadata_AccountSetPasswordRequested_Fragment | EventMetadata_AddressCreated_Fragment | EventMetadata_AddressDeleted_Fragment | EventMetadata_AddressUpdated_Fragment | EventMetadata_AppDeleted_Fragment | EventMetadata_AppInstalled_Fragment | EventMetadata_AppStatusChanged_Fragment | EventMetadata_AppUpdated_Fragment | EventMetadata_AttributeCreated_Fragment | EventMetadata_AttributeDeleted_Fragment | EventMetadata_AttributeUpdated_Fragment | EventMetadata_AttributeValueCreated_Fragment | EventMetadata_AttributeValueDeleted_Fragment | EventMetadata_AttributeValueUpdated_Fragment | EventMetadata_CalculateTaxes_Fragment | EventMetadata_CategoryCreated_Fragment | EventMetadata_CategoryDeleted_Fragment | EventMetadata_CategoryUpdated_Fragment | EventMetadata_ChannelCreated_Fragment | EventMetadata_ChannelDeleted_Fragment | EventMetadata_ChannelMetadataUpdated_Fragment | EventMetadata_ChannelStatusChanged_Fragment | EventMetadata_ChannelUpdated_Fragment | EventMetadata_CheckoutCreated_Fragment | EventMetadata_CheckoutFilterShippingMethods_Fragment | EventMetadata_CheckoutFullyAuthorized_Fragment | EventMetadata_CheckoutFullyPaid_Fragment | EventMetadata_CheckoutMetadataUpdated_Fragment | EventMetadata_CheckoutUpdated_Fragment | EventMetadata_CollectionCreated_Fragment | EventMetadata_CollectionDeleted_Fragment | EventMetadata_CollectionMetadataUpdated_Fragment | EventMetadata_CollectionUpdated_Fragment | EventMetadata_CustomerCreated_Fragment | EventMetadata_CustomerMetadataUpdated_Fragment | EventMetadata_CustomerUpdated_Fragment | EventMetadata_DraftOrderCreated_Fragment | EventMetadata_DraftOrderDeleted_Fragment | EventMetadata_DraftOrderUpdated_Fragment | EventMetadata_FulfillmentApproved_Fragment | EventMetadata_FulfillmentCanceled_Fragment | EventMetadata_FulfillmentCreated_Fragment | EventMetadata_FulfillmentMetadataUpdated_Fragment | EventMetadata_FulfillmentTrackingNumberUpdated_Fragment | EventMetadata_GiftCardCreated_Fragment | EventMetadata_GiftCardDeleted_Fragment | EventMetadata_GiftCardExportCompleted_Fragment | EventMetadata_GiftCardMetadataUpdated_Fragment | EventMetadata_GiftCardSent_Fragment | EventMetadata_GiftCardStatusChanged_Fragment | EventMetadata_GiftCardUpdated_Fragment | EventMetadata_InvoiceDeleted_Fragment | EventMetadata_InvoiceRequested_Fragment | EventMetadata_InvoiceSent_Fragment | EventMetadata_ListStoredPaymentMethods_Fragment | EventMetadata_MenuCreated_Fragment | EventMetadata_MenuDeleted_Fragment | EventMetadata_MenuItemCreated_Fragment | EventMetadata_MenuItemDeleted_Fragment | EventMetadata_MenuItemUpdated_Fragment | EventMetadata_MenuUpdated_Fragment | EventMetadata_OrderBulkCreated_Fragment | EventMetadata_OrderCancelled_Fragment | EventMetadata_OrderConfirmed_Fragment | EventMetadata_OrderCreated_Fragment | EventMetadata_OrderExpired_Fragment | EventMetadata_OrderFilterShippingMethods_Fragment | EventMetadata_OrderFulfilled_Fragment | EventMetadata_OrderFullyPaid_Fragment | EventMetadata_OrderFullyRefunded_Fragment | EventMetadata_OrderMetadataUpdated_Fragment | EventMetadata_OrderPaid_Fragment | EventMetadata_OrderRefunded_Fragment | EventMetadata_OrderUpdated_Fragment | EventMetadata_PageCreated_Fragment | EventMetadata_PageDeleted_Fragment | EventMetadata_PageTypeCreated_Fragment | EventMetadata_PageTypeDeleted_Fragment | EventMetadata_PageTypeUpdated_Fragment | EventMetadata_PageUpdated_Fragment | EventMetadata_PaymentAuthorize_Fragment | EventMetadata_PaymentCaptureEvent_Fragment | EventMetadata_PaymentConfirmEvent_Fragment | EventMetadata_PaymentGatewayInitializeSession_Fragment | EventMetadata_PaymentGatewayInitializeTokenizationSession_Fragment | EventMetadata_PaymentListGateways_Fragment | EventMetadata_PaymentMethodInitializeTokenizationSession_Fragment | EventMetadata_PaymentMethodProcessTokenizationSession_Fragment | EventMetadata_PaymentProcessEvent_Fragment | EventMetadata_PaymentRefundEvent_Fragment | EventMetadata_PaymentVoidEvent_Fragment | EventMetadata_PermissionGroupCreated_Fragment | EventMetadata_PermissionGroupDeleted_Fragment | EventMetadata_PermissionGroupUpdated_Fragment | EventMetadata_ProductCreated_Fragment | EventMetadata_ProductDeleted_Fragment | EventMetadata_ProductExportCompleted_Fragment | EventMetadata_ProductMediaCreated_Fragment | EventMetadata_ProductMediaDeleted_Fragment | EventMetadata_ProductMediaUpdated_Fragment | EventMetadata_ProductMetadataUpdated_Fragment | EventMetadata_ProductUpdated_Fragment | EventMetadata_ProductVariantBackInStock_Fragment | EventMetadata_ProductVariantCreated_Fragment | EventMetadata_ProductVariantDeleted_Fragment | EventMetadata_ProductVariantMetadataUpdated_Fragment | EventMetadata_ProductVariantOutOfStock_Fragment | EventMetadata_ProductVariantStockUpdated_Fragment | EventMetadata_ProductVariantUpdated_Fragment | EventMetadata_PromotionCreated_Fragment | EventMetadata_PromotionDeleted_Fragment | EventMetadata_PromotionEnded_Fragment | EventMetadata_PromotionRuleCreated_Fragment | EventMetadata_PromotionRuleDeleted_Fragment | EventMetadata_PromotionRuleUpdated_Fragment | EventMetadata_PromotionStarted_Fragment | EventMetadata_PromotionUpdated_Fragment | EventMetadata_SaleCreated_Fragment | EventMetadata_SaleDeleted_Fragment | EventMetadata_SaleToggle_Fragment | EventMetadata_SaleUpdated_Fragment | EventMetadata_ShippingListMethodsForCheckout_Fragment | EventMetadata_ShippingPriceCreated_Fragment | EventMetadata_ShippingPriceDeleted_Fragment | EventMetadata_ShippingPriceUpdated_Fragment | EventMetadata_ShippingZoneCreated_Fragment | EventMetadata_ShippingZoneDeleted_Fragment | EventMetadata_ShippingZoneMetadataUpdated_Fragment | EventMetadata_ShippingZoneUpdated_Fragment | EventMetadata_ShopMetadataUpdated_Fragment | EventMetadata_StaffCreated_Fragment | EventMetadata_StaffDeleted_Fragment | EventMetadata_StaffSetPasswordRequested_Fragment | EventMetadata_StaffUpdated_Fragment | EventMetadata_StoredPaymentMethodDeleteRequested_Fragment | EventMetadata_ThumbnailCreated_Fragment | EventMetadata_TransactionCancelationRequested_Fragment | EventMetadata_TransactionChargeRequested_Fragment | EventMetadata_TransactionInitializeSession_Fragment | EventMetadata_TransactionItemMetadataUpdated_Fragment | EventMetadata_TransactionProcessSession_Fragment | EventMetadata_TransactionRefundRequested_Fragment | EventMetadata_TranslationCreated_Fragment | EventMetadata_TranslationUpdated_Fragment | EventMetadata_VoucherCodeExportCompleted_Fragment | EventMetadata_VoucherCodesCreated_Fragment | EventMetadata_VoucherCodesDeleted_Fragment | EventMetadata_VoucherCreated_Fragment | EventMetadata_VoucherDeleted_Fragment | EventMetadata_VoucherMetadataUpdated_Fragment | EventMetadata_VoucherUpdated_Fragment | EventMetadata_WarehouseCreated_Fragment | EventMetadata_WarehouseDeleted_Fragment | EventMetadata_WarehouseMetadataUpdated_Fragment | EventMetadata_WarehouseUpdated_Fragment;
+export type EventMetadataFragment = EventMetadata_AccountChangeEmailRequested_Fragment | EventMetadata_AccountConfirmationRequested_Fragment | EventMetadata_AccountConfirmed_Fragment | EventMetadata_AccountDeleteRequested_Fragment | EventMetadata_AccountDeleted_Fragment | EventMetadata_AccountEmailChanged_Fragment | EventMetadata_AccountSetPasswordRequested_Fragment | EventMetadata_AddressCreated_Fragment | EventMetadata_AddressDeleted_Fragment | EventMetadata_AddressUpdated_Fragment | EventMetadata_AppDeleted_Fragment | EventMetadata_AppInstalled_Fragment | EventMetadata_AppStatusChanged_Fragment | EventMetadata_AppUpdated_Fragment | EventMetadata_AttributeCreated_Fragment | EventMetadata_AttributeDeleted_Fragment | EventMetadata_AttributeUpdated_Fragment | EventMetadata_AttributeValueCreated_Fragment | EventMetadata_AttributeValueDeleted_Fragment | EventMetadata_AttributeValueUpdated_Fragment | EventMetadata_CalculateTaxes_Fragment | EventMetadata_CategoryCreated_Fragment | EventMetadata_CategoryDeleted_Fragment | EventMetadata_CategoryUpdated_Fragment | EventMetadata_ChannelCreated_Fragment | EventMetadata_ChannelDeleted_Fragment | EventMetadata_ChannelMetadataUpdated_Fragment | EventMetadata_ChannelStatusChanged_Fragment | EventMetadata_ChannelUpdated_Fragment | EventMetadata_CheckoutCreated_Fragment | EventMetadata_CheckoutFilterShippingMethods_Fragment | EventMetadata_CheckoutFullyAuthorized_Fragment | EventMetadata_CheckoutFullyPaid_Fragment | EventMetadata_CheckoutMetadataUpdated_Fragment | EventMetadata_CheckoutUpdated_Fragment | EventMetadata_CollectionCreated_Fragment | EventMetadata_CollectionDeleted_Fragment | EventMetadata_CollectionMetadataUpdated_Fragment | EventMetadata_CollectionUpdated_Fragment | EventMetadata_CustomerCreated_Fragment | EventMetadata_CustomerMetadataUpdated_Fragment | EventMetadata_CustomerUpdated_Fragment | EventMetadata_DraftOrderCreated_Fragment | EventMetadata_DraftOrderDeleted_Fragment | EventMetadata_DraftOrderUpdated_Fragment | EventMetadata_FulfillmentApproved_Fragment | EventMetadata_FulfillmentCanceled_Fragment | EventMetadata_FulfillmentCreated_Fragment | EventMetadata_FulfillmentMetadataUpdated_Fragment | EventMetadata_FulfillmentTrackingNumberUpdated_Fragment | EventMetadata_GiftCardCreated_Fragment | EventMetadata_GiftCardDeleted_Fragment | EventMetadata_GiftCardExportCompleted_Fragment | EventMetadata_GiftCardMetadataUpdated_Fragment | EventMetadata_GiftCardSent_Fragment | EventMetadata_GiftCardStatusChanged_Fragment | EventMetadata_GiftCardUpdated_Fragment | EventMetadata_InvoiceDeleted_Fragment | EventMetadata_InvoiceRequested_Fragment | EventMetadata_InvoiceSent_Fragment | EventMetadata_ListStoredPaymentMethods_Fragment | EventMetadata_MenuCreated_Fragment | EventMetadata_MenuDeleted_Fragment | EventMetadata_MenuItemCreated_Fragment | EventMetadata_MenuItemDeleted_Fragment | EventMetadata_MenuItemUpdated_Fragment | EventMetadata_MenuUpdated_Fragment | EventMetadata_OrderBulkCreated_Fragment | EventMetadata_OrderCancelled_Fragment | EventMetadata_OrderConfirmed_Fragment | EventMetadata_OrderCreated_Fragment | EventMetadata_OrderExpired_Fragment | EventMetadata_OrderFilterShippingMethods_Fragment | EventMetadata_OrderFulfilled_Fragment | EventMetadata_OrderFullyPaid_Fragment | EventMetadata_OrderFullyRefunded_Fragment | EventMetadata_OrderMetadataUpdated_Fragment | EventMetadata_OrderPaid_Fragment | EventMetadata_OrderRefunded_Fragment | EventMetadata_OrderUpdated_Fragment | EventMetadata_PageCreated_Fragment | EventMetadata_PageDeleted_Fragment | EventMetadata_PageTypeCreated_Fragment | EventMetadata_PageTypeDeleted_Fragment | EventMetadata_PageTypeUpdated_Fragment | EventMetadata_PageUpdated_Fragment | EventMetadata_PaymentAuthorize_Fragment | EventMetadata_PaymentCaptureEvent_Fragment | EventMetadata_PaymentConfirmEvent_Fragment | EventMetadata_PaymentGatewayInitializeSession_Fragment | EventMetadata_PaymentGatewayInitializeTokenizationSession_Fragment | EventMetadata_PaymentListGateways_Fragment | EventMetadata_PaymentMethodInitializeTokenizationSession_Fragment | EventMetadata_PaymentMethodProcessTokenizationSession_Fragment | EventMetadata_PaymentProcessEvent_Fragment | EventMetadata_PaymentRefundEvent_Fragment | EventMetadata_PaymentVoidEvent_Fragment | EventMetadata_PermissionGroupCreated_Fragment | EventMetadata_PermissionGroupDeleted_Fragment | EventMetadata_PermissionGroupUpdated_Fragment | EventMetadata_ProductCreated_Fragment | EventMetadata_ProductDeleted_Fragment | EventMetadata_ProductExportCompleted_Fragment | EventMetadata_ProductMediaCreated_Fragment | EventMetadata_ProductMediaDeleted_Fragment | EventMetadata_ProductMediaUpdated_Fragment | EventMetadata_ProductMetadataUpdated_Fragment | EventMetadata_ProductUpdated_Fragment | EventMetadata_ProductVariantBackInStock_Fragment | EventMetadata_ProductVariantCreated_Fragment | EventMetadata_ProductVariantDeleted_Fragment | EventMetadata_ProductVariantDiscountedPriceUpdated_Fragment | EventMetadata_ProductVariantMetadataUpdated_Fragment | EventMetadata_ProductVariantOutOfStock_Fragment | EventMetadata_ProductVariantStockUpdated_Fragment | EventMetadata_ProductVariantUpdated_Fragment | EventMetadata_PromotionCreated_Fragment | EventMetadata_PromotionDeleted_Fragment | EventMetadata_PromotionEnded_Fragment | EventMetadata_PromotionRuleCreated_Fragment | EventMetadata_PromotionRuleDeleted_Fragment | EventMetadata_PromotionRuleUpdated_Fragment | EventMetadata_PromotionStarted_Fragment | EventMetadata_PromotionUpdated_Fragment | EventMetadata_SaleCreated_Fragment | EventMetadata_SaleDeleted_Fragment | EventMetadata_SaleToggle_Fragment | EventMetadata_SaleUpdated_Fragment | EventMetadata_ShippingListMethodsForCheckout_Fragment | EventMetadata_ShippingPriceCreated_Fragment | EventMetadata_ShippingPriceDeleted_Fragment | EventMetadata_ShippingPriceUpdated_Fragment | EventMetadata_ShippingZoneCreated_Fragment | EventMetadata_ShippingZoneDeleted_Fragment | EventMetadata_ShippingZoneMetadataUpdated_Fragment | EventMetadata_ShippingZoneUpdated_Fragment | EventMetadata_ShopMetadataUpdated_Fragment | EventMetadata_StaffCreated_Fragment | EventMetadata_StaffDeleted_Fragment | EventMetadata_StaffSetPasswordRequested_Fragment | EventMetadata_StaffUpdated_Fragment | EventMetadata_StoredPaymentMethodDeleteRequested_Fragment | EventMetadata_ThumbnailCreated_Fragment | EventMetadata_TransactionCancelationRequested_Fragment | EventMetadata_TransactionChargeRequested_Fragment | EventMetadata_TransactionInitializeSession_Fragment | EventMetadata_TransactionItemMetadataUpdated_Fragment | EventMetadata_TransactionProcessSession_Fragment | EventMetadata_TransactionRefundRequested_Fragment | EventMetadata_TranslationCreated_Fragment | EventMetadata_TranslationUpdated_Fragment | EventMetadata_VoucherCodeExportCompleted_Fragment | EventMetadata_VoucherCodesCreated_Fragment | EventMetadata_VoucherCodesDeleted_Fragment | EventMetadata_VoucherCreated_Fragment | EventMetadata_VoucherDeleted_Fragment | EventMetadata_VoucherMetadataUpdated_Fragment | EventMetadata_VoucherUpdated_Fragment | EventMetadata_WarehouseCreated_Fragment | EventMetadata_WarehouseDeleted_Fragment | EventMetadata_WarehouseMetadataUpdated_Fragment | EventMetadata_WarehouseUpdated_Fragment;
 
 export type OrderGrantedRefundFragment = { readonly shippingCostsIncluded: boolean, readonly lines?: ReadonlyArray<{ readonly quantity: number, readonly orderLine: { readonly id: string } }> | null };
 
@@ -30813,12 +32196,12 @@ export type FetchChannelsQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type FetchChannelsQuery = { readonly channels?: ReadonlyArray<{ readonly id: string, readonly slug: string, readonly currencyCode: string }> | null };
 
-export type FulfillmentTrackingNumberUpdatedEventFragment = { readonly version?: string | null, readonly issuedAt?: string | null, readonly fulfillment?: { readonly trackingNumber: string, readonly atobaraiPDCompanyCode?: string | null } | null, readonly order?: { readonly id: string, readonly channel: { readonly id: string, readonly slug: string, readonly currencyCode: string }, readonly transactions: ReadonlyArray<{ readonly pspReference: string, readonly createdBy?: { readonly __typename: 'App', readonly id: string } | { readonly __typename: 'User' } | null }> } | null, readonly recipient?: { readonly id: string } | null };
+export type FulfillmentTrackingNumberUpdatedEventFragment = { readonly version?: string | null, readonly issuedAt?: string | null, readonly fulfillment?: { readonly trackingNumber: string, readonly atobaraiPDCompanyCode?: string | null } | null, readonly order?: { readonly id: string, readonly channel: { readonly id: string, readonly slug: string, readonly currencyCode: string }, readonly transactions: ReadonlyArray<{ readonly pspReference: string, readonly events: ReadonlyArray<{ readonly type?: TransactionEventTypeEnum | null }>, readonly createdBy?: { readonly __typename: 'App', readonly id: string } | { readonly __typename: 'User' } | null }> } | null, readonly recipient?: { readonly id: string } | null };
 
 export type FulfillmentTrackingNumberUpdatedSubscriptionVariables = Exact<{ [key: string]: never; }>;
 
 
-export type FulfillmentTrackingNumberUpdatedSubscription = { readonly event?: { readonly version?: string | null, readonly issuedAt?: string | null, readonly fulfillment?: { readonly trackingNumber: string, readonly atobaraiPDCompanyCode?: string | null } | null, readonly order?: { readonly id: string, readonly channel: { readonly id: string, readonly slug: string, readonly currencyCode: string }, readonly transactions: ReadonlyArray<{ readonly pspReference: string, readonly createdBy?: { readonly __typename: 'App', readonly id: string } | { readonly __typename: 'User' } | null }> } | null, readonly recipient?: { readonly id: string } | null } | {} | null };
+export type FulfillmentTrackingNumberUpdatedSubscription = { readonly event?: { readonly version?: string | null, readonly issuedAt?: string | null, readonly fulfillment?: { readonly trackingNumber: string, readonly atobaraiPDCompanyCode?: string | null } | null, readonly order?: { readonly id: string, readonly channel: { readonly id: string, readonly slug: string, readonly currencyCode: string }, readonly transactions: ReadonlyArray<{ readonly pspReference: string, readonly events: ReadonlyArray<{ readonly type?: TransactionEventTypeEnum | null }>, readonly createdBy?: { readonly __typename: 'App', readonly id: string } | { readonly __typename: 'User' } | null }> } | null, readonly recipient?: { readonly id: string } | null } | {} | null };
 
 export type PaymentGatewayInitializeSessionEventFragment = { readonly version?: string | null, readonly issuedAt?: string | null, readonly sourceObject: { readonly __typename: 'Checkout', readonly id: string, readonly email?: string | null, readonly channel: { readonly id: string, readonly slug: string, readonly currencyCode: string }, readonly billingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly shippingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly discount?: { readonly amount: number } | null, readonly shippingPrice: { readonly gross: { readonly amount: number } }, readonly totalPrice: { readonly gross: { readonly amount: number } }, readonly lines: ReadonlyArray<{ readonly __typename: 'CheckoutLine', readonly id: string, readonly quantity: number, readonly unitPrice: { readonly gross: { readonly amount: number } }, readonly checkoutVariant: { readonly sku?: string | null, readonly product: { readonly name: string } } }> } | { readonly __typename: 'Order', readonly id: string, readonly userEmail?: string | null, readonly channel: { readonly id: string, readonly slug: string, readonly currencyCode: string }, readonly billingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly shippingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly discount?: { readonly amount: number } | null, readonly shippingPrice: { readonly gross: { readonly amount: number } }, readonly total: { readonly gross: { readonly amount: number } }, readonly lines: ReadonlyArray<{ readonly __typename: 'OrderLine', readonly id: string, readonly quantity: number, readonly unitPrice: { readonly gross: { readonly amount: number } }, readonly orderVariant?: { readonly sku?: string | null, readonly product: { readonly name: string } } | null }> }, readonly recipient?: { readonly id: string } | null };
 
@@ -30841,12 +32224,12 @@ export type TransactionProcessSessionSubscriptionVariables = Exact<{ [key: strin
 
 export type TransactionProcessSessionSubscription = { readonly event?: { readonly version?: string | null, readonly issuedAt?: string | null, readonly action: { readonly amount: number, readonly currency: string }, readonly transaction: { readonly token: string, readonly pspReference: string }, readonly sourceObject: { readonly __typename: 'Checkout', readonly id: string, readonly email?: string | null, readonly channel: { readonly id: string, readonly slug: string, readonly currencyCode: string }, readonly billingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly shippingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly discount?: { readonly amount: number } | null, readonly shippingPrice: { readonly gross: { readonly amount: number } }, readonly totalPrice: { readonly gross: { readonly amount: number } }, readonly lines: ReadonlyArray<{ readonly __typename: 'CheckoutLine', readonly id: string, readonly quantity: number, readonly unitPrice: { readonly gross: { readonly amount: number } }, readonly checkoutVariant: { readonly sku?: string | null, readonly product: { readonly name: string } } }> } | { readonly __typename: 'Order', readonly id: string, readonly userEmail?: string | null, readonly channel: { readonly id: string, readonly slug: string, readonly currencyCode: string }, readonly billingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly shippingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly discount?: { readonly amount: number } | null, readonly shippingPrice: { readonly gross: { readonly amount: number } }, readonly total: { readonly gross: { readonly amount: number } }, readonly lines: ReadonlyArray<{ readonly __typename: 'OrderLine', readonly id: string, readonly quantity: number, readonly unitPrice: { readonly gross: { readonly amount: number } }, readonly orderVariant?: { readonly sku?: string | null, readonly product: { readonly name: string } } | null }> }, readonly recipient?: { readonly id: string } | null } | {} | null };
 
-export type TransactionRefundRequestedEventFragment = { readonly version?: string | null, readonly issuedAt?: string | null, readonly action: { readonly amount: number, readonly currency: string }, readonly grantedRefund?: { readonly shippingCostsIncluded: boolean, readonly lines?: ReadonlyArray<{ readonly quantity: number, readonly orderLine: { readonly id: string } }> | null } | null, readonly transaction?: { readonly token: string, readonly pspReference: string, readonly checkout?: { readonly __typename: 'Checkout', readonly id: string, readonly email?: string | null, readonly channel: { readonly id: string, readonly slug: string, readonly currencyCode: string }, readonly billingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly shippingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly discount?: { readonly amount: number } | null, readonly shippingPrice: { readonly gross: { readonly amount: number } }, readonly totalPrice: { readonly gross: { readonly amount: number } }, readonly lines: ReadonlyArray<{ readonly __typename: 'CheckoutLine', readonly id: string, readonly quantity: number, readonly unitPrice: { readonly gross: { readonly amount: number } }, readonly checkoutVariant: { readonly sku?: string | null, readonly product: { readonly name: string } } }> } | null, readonly order?: { readonly __typename: 'Order', readonly id: string, readonly userEmail?: string | null, readonly channel: { readonly id: string, readonly slug: string, readonly currencyCode: string }, readonly billingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly shippingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly discount?: { readonly amount: number } | null, readonly shippingPrice: { readonly gross: { readonly amount: number } }, readonly total: { readonly gross: { readonly amount: number } }, readonly lines: ReadonlyArray<{ readonly __typename: 'OrderLine', readonly id: string, readonly quantity: number, readonly unitPrice: { readonly gross: { readonly amount: number } }, readonly orderVariant?: { readonly sku?: string | null, readonly product: { readonly name: string } } | null }> } | null } | null, readonly recipient?: { readonly id: string } | null };
+export type TransactionRefundRequestedEventFragment = { readonly version?: string | null, readonly issuedAt?: string | null, readonly action: { readonly amount: number, readonly currency: string }, readonly grantedRefund?: { readonly shippingCostsIncluded: boolean, readonly lines?: ReadonlyArray<{ readonly quantity: number, readonly orderLine: { readonly id: string } }> | null } | null, readonly transaction?: { readonly token: string, readonly pspReference: string, readonly chargedAmount: { readonly amount: number }, readonly checkout?: { readonly __typename: 'Checkout', readonly id: string, readonly email?: string | null, readonly channel: { readonly id: string, readonly slug: string, readonly currencyCode: string }, readonly billingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly shippingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly discount?: { readonly amount: number } | null, readonly shippingPrice: { readonly gross: { readonly amount: number } }, readonly totalPrice: { readonly gross: { readonly amount: number } }, readonly lines: ReadonlyArray<{ readonly __typename: 'CheckoutLine', readonly id: string, readonly quantity: number, readonly unitPrice: { readonly gross: { readonly amount: number } }, readonly checkoutVariant: { readonly sku?: string | null, readonly product: { readonly name: string } } }> } | null, readonly order?: { readonly __typename: 'Order', readonly id: string, readonly userEmail?: string | null, readonly channel: { readonly id: string, readonly slug: string, readonly currencyCode: string }, readonly billingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly shippingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly discount?: { readonly amount: number } | null, readonly shippingPrice: { readonly gross: { readonly amount: number } }, readonly total: { readonly gross: { readonly amount: number } }, readonly lines: ReadonlyArray<{ readonly __typename: 'OrderLine', readonly id: string, readonly quantity: number, readonly unitPrice: { readonly gross: { readonly amount: number } }, readonly orderVariant?: { readonly sku?: string | null, readonly product: { readonly name: string } } | null }> } | null } | null, readonly recipient?: { readonly id: string } | null };
 
 export type TransactionRefundRequestedSubscriptionVariables = Exact<{ [key: string]: never; }>;
 
 
-export type TransactionRefundRequestedSubscription = { readonly event?: { readonly version?: string | null, readonly issuedAt?: string | null, readonly action: { readonly amount: number, readonly currency: string }, readonly grantedRefund?: { readonly shippingCostsIncluded: boolean, readonly lines?: ReadonlyArray<{ readonly quantity: number, readonly orderLine: { readonly id: string } }> | null } | null, readonly transaction?: { readonly token: string, readonly pspReference: string, readonly checkout?: { readonly __typename: 'Checkout', readonly id: string, readonly email?: string | null, readonly channel: { readonly id: string, readonly slug: string, readonly currencyCode: string }, readonly billingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly shippingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly discount?: { readonly amount: number } | null, readonly shippingPrice: { readonly gross: { readonly amount: number } }, readonly totalPrice: { readonly gross: { readonly amount: number } }, readonly lines: ReadonlyArray<{ readonly __typename: 'CheckoutLine', readonly id: string, readonly quantity: number, readonly unitPrice: { readonly gross: { readonly amount: number } }, readonly checkoutVariant: { readonly sku?: string | null, readonly product: { readonly name: string } } }> } | null, readonly order?: { readonly __typename: 'Order', readonly id: string, readonly userEmail?: string | null, readonly channel: { readonly id: string, readonly slug: string, readonly currencyCode: string }, readonly billingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly shippingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly discount?: { readonly amount: number } | null, readonly shippingPrice: { readonly gross: { readonly amount: number } }, readonly total: { readonly gross: { readonly amount: number } }, readonly lines: ReadonlyArray<{ readonly __typename: 'OrderLine', readonly id: string, readonly quantity: number, readonly unitPrice: { readonly gross: { readonly amount: number } }, readonly orderVariant?: { readonly sku?: string | null, readonly product: { readonly name: string } } | null }> } | null } | null, readonly recipient?: { readonly id: string } | null } | {} | null };
+export type TransactionRefundRequestedSubscription = { readonly event?: { readonly version?: string | null, readonly issuedAt?: string | null, readonly action: { readonly amount: number, readonly currency: string }, readonly grantedRefund?: { readonly shippingCostsIncluded: boolean, readonly lines?: ReadonlyArray<{ readonly quantity: number, readonly orderLine: { readonly id: string } }> | null } | null, readonly transaction?: { readonly token: string, readonly pspReference: string, readonly chargedAmount: { readonly amount: number }, readonly checkout?: { readonly __typename: 'Checkout', readonly id: string, readonly email?: string | null, readonly channel: { readonly id: string, readonly slug: string, readonly currencyCode: string }, readonly billingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly shippingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly discount?: { readonly amount: number } | null, readonly shippingPrice: { readonly gross: { readonly amount: number } }, readonly totalPrice: { readonly gross: { readonly amount: number } }, readonly lines: ReadonlyArray<{ readonly __typename: 'CheckoutLine', readonly id: string, readonly quantity: number, readonly unitPrice: { readonly gross: { readonly amount: number } }, readonly checkoutVariant: { readonly sku?: string | null, readonly product: { readonly name: string } } }> } | null, readonly order?: { readonly __typename: 'Order', readonly id: string, readonly userEmail?: string | null, readonly channel: { readonly id: string, readonly slug: string, readonly currencyCode: string }, readonly billingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly shippingAddress?: { readonly firstName: string, readonly lastName: string, readonly companyName: string, readonly postalCode: string, readonly countryArea: string, readonly streetAddress1: string, readonly streetAddress2: string, readonly phone?: string | null, readonly city: string, readonly cityArea: string, readonly country: { readonly code: string } } | null, readonly discount?: { readonly amount: number } | null, readonly shippingPrice: { readonly gross: { readonly amount: number } }, readonly total: { readonly gross: { readonly amount: number } }, readonly lines: ReadonlyArray<{ readonly __typename: 'OrderLine', readonly id: string, readonly quantity: number, readonly unitPrice: { readonly gross: { readonly amount: number } }, readonly orderVariant?: { readonly sku?: string | null, readonly product: { readonly name: string } } | null }> } | null } | null, readonly recipient?: { readonly id: string } | null } | {} | null };
 
 export const UntypedEventMetadataFragmentDoc = gql`
     fragment EventMetadata on Event {
@@ -30878,6 +32261,9 @@ export const UntypedFulfillmentTrackingNumberUpdatedEventFragmentDoc = gql`
     }
     transactions {
       pspReference
+      events {
+        type
+      }
       createdBy {
         ... on App {
           __typename
@@ -31061,6 +32447,9 @@ export const UntypedTransactionRefundRequestedEventFragmentDoc = gql`
   transaction {
     token
     pspReference
+    chargedAmount {
+      amount
+    }
     checkout {
       ...SourceObject
     }
@@ -31147,18 +32536,18 @@ ${UntypedChannelFragmentDoc}
 ${UntypedAddressFragmentDoc}`;
 export const EventMetadataFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"EventMetadata"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Event"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"issuedAt"}},{"kind":"Field","name":{"kind":"Name","value":"recipient"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<EventMetadataFragment, unknown>;
 export const ChannelFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Channel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"currencyCode"}}]}}]} as unknown as DocumentNode<ChannelFragment, unknown>;
-export const FulfillmentTrackingNumberUpdatedEventFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"FulfillmentTrackingNumberUpdatedEvent"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"FulfillmentTrackingNumberUpdated"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"EventMetadata"}},{"kind":"Field","name":{"kind":"Name","value":"fulfillment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"trackingNumber"}},{"kind":"Field","alias":{"kind":"Name","value":"atobaraiPDCompanyCode"},"name":{"kind":"Name","value":"privateMetafield"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"key"},"value":{"kind":"StringValue","value":"np-atobarai.pd-company-code","block":false}}]}]}},{"kind":"Field","name":{"kind":"Name","value":"order"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"transactions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pspReference"}},{"kind":"Field","name":{"kind":"Name","value":"createdBy"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"App"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"User"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}}]}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"EventMetadata"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Event"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"issuedAt"}},{"kind":"Field","name":{"kind":"Name","value":"recipient"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Channel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"currencyCode"}}]}}]} as unknown as DocumentNode<FulfillmentTrackingNumberUpdatedEventFragment, unknown>;
+export const FulfillmentTrackingNumberUpdatedEventFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"FulfillmentTrackingNumberUpdatedEvent"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"FulfillmentTrackingNumberUpdated"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"EventMetadata"}},{"kind":"Field","name":{"kind":"Name","value":"fulfillment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"trackingNumber"}},{"kind":"Field","alias":{"kind":"Name","value":"atobaraiPDCompanyCode"},"name":{"kind":"Name","value":"privateMetafield"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"key"},"value":{"kind":"StringValue","value":"np-atobarai.pd-company-code","block":false}}]}]}},{"kind":"Field","name":{"kind":"Name","value":"order"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"transactions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pspReference"}},{"kind":"Field","name":{"kind":"Name","value":"events"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"type"}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdBy"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"App"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"User"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}}]}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"EventMetadata"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Event"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"issuedAt"}},{"kind":"Field","name":{"kind":"Name","value":"recipient"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Channel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"currencyCode"}}]}}]} as unknown as DocumentNode<FulfillmentTrackingNumberUpdatedEventFragment, unknown>;
 export const AddressFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Address"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Address"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"companyName"}},{"kind":"Field","name":{"kind":"Name","value":"postalCode"}},{"kind":"Field","name":{"kind":"Name","value":"countryArea"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress1"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress2"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"cityArea"}},{"kind":"Field","name":{"kind":"Name","value":"country"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}}]}}]}}]} as unknown as DocumentNode<AddressFragment, unknown>;
 export const SourceObjectFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SourceObject"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"OrderOrCheckout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Checkout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"totalPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"checkoutVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Order"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"userEmail"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"total"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"orderVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Channel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"currencyCode"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Address"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Address"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"companyName"}},{"kind":"Field","name":{"kind":"Name","value":"postalCode"}},{"kind":"Field","name":{"kind":"Name","value":"countryArea"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress1"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress2"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"cityArea"}},{"kind":"Field","name":{"kind":"Name","value":"country"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}}]}}]}}]} as unknown as DocumentNode<SourceObjectFragment, unknown>;
 export const PaymentGatewayInitializeSessionEventFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"PaymentGatewayInitializeSessionEvent"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"PaymentGatewayInitializeSession"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"EventMetadata"}},{"kind":"Field","name":{"kind":"Name","value":"sourceObject"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SourceObject"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Channel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"currencyCode"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Address"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Address"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"companyName"}},{"kind":"Field","name":{"kind":"Name","value":"postalCode"}},{"kind":"Field","name":{"kind":"Name","value":"countryArea"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress1"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress2"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"cityArea"}},{"kind":"Field","name":{"kind":"Name","value":"country"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"EventMetadata"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Event"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"issuedAt"}},{"kind":"Field","name":{"kind":"Name","value":"recipient"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SourceObject"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"OrderOrCheckout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Checkout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"totalPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"checkoutVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Order"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"userEmail"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"total"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"orderVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<PaymentGatewayInitializeSessionEventFragment, unknown>;
 export const TransactionInitializeSessionEventFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TransactionInitializeSessionEvent"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TransactionInitializeSession"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"EventMetadata"}},{"kind":"Field","name":{"kind":"Name","value":"action"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}}]}},{"kind":"Field","name":{"kind":"Name","value":"transaction"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"token"}}]}},{"kind":"Field","name":{"kind":"Name","value":"sourceObject"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SourceObject"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Channel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"currencyCode"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Address"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Address"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"companyName"}},{"kind":"Field","name":{"kind":"Name","value":"postalCode"}},{"kind":"Field","name":{"kind":"Name","value":"countryArea"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress1"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress2"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"cityArea"}},{"kind":"Field","name":{"kind":"Name","value":"country"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"EventMetadata"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Event"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"issuedAt"}},{"kind":"Field","name":{"kind":"Name","value":"recipient"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SourceObject"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"OrderOrCheckout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Checkout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"totalPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"checkoutVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Order"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"userEmail"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"total"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"orderVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<TransactionInitializeSessionEventFragment, unknown>;
 export const TransactionProcessSessionEventFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TransactionProcessSessionEvent"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TransactionProcessSession"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"EventMetadata"}},{"kind":"Field","name":{"kind":"Name","value":"action"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}}]}},{"kind":"Field","name":{"kind":"Name","value":"transaction"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"token"}},{"kind":"Field","name":{"kind":"Name","value":"pspReference"}}]}},{"kind":"Field","name":{"kind":"Name","value":"sourceObject"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SourceObject"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Channel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"currencyCode"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Address"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Address"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"companyName"}},{"kind":"Field","name":{"kind":"Name","value":"postalCode"}},{"kind":"Field","name":{"kind":"Name","value":"countryArea"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress1"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress2"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"cityArea"}},{"kind":"Field","name":{"kind":"Name","value":"country"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"EventMetadata"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Event"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"issuedAt"}},{"kind":"Field","name":{"kind":"Name","value":"recipient"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SourceObject"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"OrderOrCheckout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Checkout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"totalPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"checkoutVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Order"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"userEmail"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"total"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"orderVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<TransactionProcessSessionEventFragment, unknown>;
 export const OrderGrantedRefundFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"OrderGrantedRefund"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"OrderGrantedRefund"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"shippingCostsIncluded"}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"orderLine"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]}}]} as unknown as DocumentNode<OrderGrantedRefundFragment, unknown>;
-export const TransactionRefundRequestedEventFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TransactionRefundRequestedEvent"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TransactionRefundRequested"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"EventMetadata"}},{"kind":"Field","name":{"kind":"Name","value":"action"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}}]}},{"kind":"Field","name":{"kind":"Name","value":"grantedRefund"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"OrderGrantedRefund"}}]}},{"kind":"Field","name":{"kind":"Name","value":"transaction"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"token"}},{"kind":"Field","name":{"kind":"Name","value":"pspReference"}},{"kind":"Field","name":{"kind":"Name","value":"checkout"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SourceObject"}}]}},{"kind":"Field","name":{"kind":"Name","value":"order"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SourceObject"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Channel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"currencyCode"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Address"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Address"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"companyName"}},{"kind":"Field","name":{"kind":"Name","value":"postalCode"}},{"kind":"Field","name":{"kind":"Name","value":"countryArea"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress1"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress2"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"cityArea"}},{"kind":"Field","name":{"kind":"Name","value":"country"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"EventMetadata"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Event"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"issuedAt"}},{"kind":"Field","name":{"kind":"Name","value":"recipient"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"OrderGrantedRefund"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"OrderGrantedRefund"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"shippingCostsIncluded"}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"orderLine"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SourceObject"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"OrderOrCheckout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Checkout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"totalPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"checkoutVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Order"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"userEmail"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"total"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"orderVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<TransactionRefundRequestedEventFragment, unknown>;
+export const TransactionRefundRequestedEventFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TransactionRefundRequestedEvent"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TransactionRefundRequested"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"EventMetadata"}},{"kind":"Field","name":{"kind":"Name","value":"action"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}}]}},{"kind":"Field","name":{"kind":"Name","value":"grantedRefund"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"OrderGrantedRefund"}}]}},{"kind":"Field","name":{"kind":"Name","value":"transaction"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"token"}},{"kind":"Field","name":{"kind":"Name","value":"pspReference"}},{"kind":"Field","name":{"kind":"Name","value":"chargedAmount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"checkout"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SourceObject"}}]}},{"kind":"Field","name":{"kind":"Name","value":"order"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SourceObject"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Channel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"currencyCode"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Address"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Address"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"companyName"}},{"kind":"Field","name":{"kind":"Name","value":"postalCode"}},{"kind":"Field","name":{"kind":"Name","value":"countryArea"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress1"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress2"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"cityArea"}},{"kind":"Field","name":{"kind":"Name","value":"country"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"EventMetadata"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Event"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"issuedAt"}},{"kind":"Field","name":{"kind":"Name","value":"recipient"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"OrderGrantedRefund"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"OrderGrantedRefund"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"shippingCostsIncluded"}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"orderLine"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SourceObject"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"OrderOrCheckout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Checkout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"totalPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"checkoutVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Order"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"userEmail"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"total"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"orderVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<TransactionRefundRequestedEventFragment, unknown>;
 export const OrderNoteAddDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"OrderNoteAdd"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"order"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"OrderNoteInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"orderNoteAdd"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"order"},"value":{"kind":"Variable","name":{"kind":"Name","value":"order"}}},{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"event"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"errors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"field"}},{"kind":"Field","name":{"kind":"Name","value":"message"}},{"kind":"Field","name":{"kind":"Name","value":"code"}}]}}]}}]}}]} as unknown as DocumentNode<OrderNoteAddMutation, OrderNoteAddMutationVariables>;
 export const FetchChannelsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"FetchChannels"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"channels"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Channel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"currencyCode"}}]}}]} as unknown as DocumentNode<FetchChannelsQuery, FetchChannelsQueryVariables>;
-export const FulfillmentTrackingNumberUpdatedDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"FulfillmentTrackingNumberUpdated"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"event"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"FulfillmentTrackingNumberUpdatedEvent"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"EventMetadata"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Event"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"issuedAt"}},{"kind":"Field","name":{"kind":"Name","value":"recipient"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Channel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"currencyCode"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"FulfillmentTrackingNumberUpdatedEvent"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"FulfillmentTrackingNumberUpdated"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"EventMetadata"}},{"kind":"Field","name":{"kind":"Name","value":"fulfillment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"trackingNumber"}},{"kind":"Field","alias":{"kind":"Name","value":"atobaraiPDCompanyCode"},"name":{"kind":"Name","value":"privateMetafield"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"key"},"value":{"kind":"StringValue","value":"np-atobarai.pd-company-code","block":false}}]}]}},{"kind":"Field","name":{"kind":"Name","value":"order"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"transactions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pspReference"}},{"kind":"Field","name":{"kind":"Name","value":"createdBy"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"App"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"User"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<FulfillmentTrackingNumberUpdatedSubscription, FulfillmentTrackingNumberUpdatedSubscriptionVariables>;
+export const FulfillmentTrackingNumberUpdatedDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"FulfillmentTrackingNumberUpdated"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"event"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"FulfillmentTrackingNumberUpdatedEvent"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"EventMetadata"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Event"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"issuedAt"}},{"kind":"Field","name":{"kind":"Name","value":"recipient"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Channel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"currencyCode"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"FulfillmentTrackingNumberUpdatedEvent"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"FulfillmentTrackingNumberUpdated"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"EventMetadata"}},{"kind":"Field","name":{"kind":"Name","value":"fulfillment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"trackingNumber"}},{"kind":"Field","alias":{"kind":"Name","value":"atobaraiPDCompanyCode"},"name":{"kind":"Name","value":"privateMetafield"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"key"},"value":{"kind":"StringValue","value":"np-atobarai.pd-company-code","block":false}}]}]}},{"kind":"Field","name":{"kind":"Name","value":"order"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"transactions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pspReference"}},{"kind":"Field","name":{"kind":"Name","value":"events"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"type"}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdBy"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"App"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"User"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<FulfillmentTrackingNumberUpdatedSubscription, FulfillmentTrackingNumberUpdatedSubscriptionVariables>;
 export const PaymentGatewayInitializeSessionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"PaymentGatewayInitializeSession"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"event"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"PaymentGatewayInitializeSessionEvent"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"EventMetadata"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Event"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"issuedAt"}},{"kind":"Field","name":{"kind":"Name","value":"recipient"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Channel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"currencyCode"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Address"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Address"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"companyName"}},{"kind":"Field","name":{"kind":"Name","value":"postalCode"}},{"kind":"Field","name":{"kind":"Name","value":"countryArea"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress1"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress2"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"cityArea"}},{"kind":"Field","name":{"kind":"Name","value":"country"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SourceObject"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"OrderOrCheckout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Checkout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"totalPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"checkoutVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Order"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"userEmail"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"total"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"orderVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"PaymentGatewayInitializeSessionEvent"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"PaymentGatewayInitializeSession"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"EventMetadata"}},{"kind":"Field","name":{"kind":"Name","value":"sourceObject"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SourceObject"}}]}}]}}]} as unknown as DocumentNode<PaymentGatewayInitializeSessionSubscription, PaymentGatewayInitializeSessionSubscriptionVariables>;
 export const TransactionInitializeSessionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"TransactionInitializeSession"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"event"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TransactionInitializeSessionEvent"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"EventMetadata"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Event"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"issuedAt"}},{"kind":"Field","name":{"kind":"Name","value":"recipient"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Channel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"currencyCode"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Address"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Address"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"companyName"}},{"kind":"Field","name":{"kind":"Name","value":"postalCode"}},{"kind":"Field","name":{"kind":"Name","value":"countryArea"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress1"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress2"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"cityArea"}},{"kind":"Field","name":{"kind":"Name","value":"country"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SourceObject"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"OrderOrCheckout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Checkout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"totalPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"checkoutVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Order"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"userEmail"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"total"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"orderVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TransactionInitializeSessionEvent"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TransactionInitializeSession"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"EventMetadata"}},{"kind":"Field","name":{"kind":"Name","value":"action"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}}]}},{"kind":"Field","name":{"kind":"Name","value":"transaction"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"token"}}]}},{"kind":"Field","name":{"kind":"Name","value":"sourceObject"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SourceObject"}}]}}]}}]} as unknown as DocumentNode<TransactionInitializeSessionSubscription, TransactionInitializeSessionSubscriptionVariables>;
 export const TransactionProcessSessionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"TransactionProcessSession"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"event"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TransactionProcessSessionEvent"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"EventMetadata"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Event"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"issuedAt"}},{"kind":"Field","name":{"kind":"Name","value":"recipient"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Channel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"currencyCode"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Address"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Address"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"companyName"}},{"kind":"Field","name":{"kind":"Name","value":"postalCode"}},{"kind":"Field","name":{"kind":"Name","value":"countryArea"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress1"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress2"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"cityArea"}},{"kind":"Field","name":{"kind":"Name","value":"country"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SourceObject"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"OrderOrCheckout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Checkout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"totalPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"checkoutVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Order"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"userEmail"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"total"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"orderVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TransactionProcessSessionEvent"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TransactionProcessSession"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"EventMetadata"}},{"kind":"Field","name":{"kind":"Name","value":"action"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}}]}},{"kind":"Field","name":{"kind":"Name","value":"transaction"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"token"}},{"kind":"Field","name":{"kind":"Name","value":"pspReference"}}]}},{"kind":"Field","name":{"kind":"Name","value":"sourceObject"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SourceObject"}}]}}]}}]} as unknown as DocumentNode<TransactionProcessSessionSubscription, TransactionProcessSessionSubscriptionVariables>;
-export const TransactionRefundRequestedDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"TransactionRefundRequested"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"event"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TransactionRefundRequestedEvent"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"EventMetadata"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Event"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"issuedAt"}},{"kind":"Field","name":{"kind":"Name","value":"recipient"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"OrderGrantedRefund"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"OrderGrantedRefund"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"shippingCostsIncluded"}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"orderLine"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Channel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"currencyCode"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Address"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Address"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"companyName"}},{"kind":"Field","name":{"kind":"Name","value":"postalCode"}},{"kind":"Field","name":{"kind":"Name","value":"countryArea"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress1"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress2"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"cityArea"}},{"kind":"Field","name":{"kind":"Name","value":"country"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SourceObject"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"OrderOrCheckout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Checkout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"totalPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"checkoutVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Order"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"userEmail"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"total"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"orderVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TransactionRefundRequestedEvent"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TransactionRefundRequested"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"EventMetadata"}},{"kind":"Field","name":{"kind":"Name","value":"action"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}}]}},{"kind":"Field","name":{"kind":"Name","value":"grantedRefund"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"OrderGrantedRefund"}}]}},{"kind":"Field","name":{"kind":"Name","value":"transaction"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"token"}},{"kind":"Field","name":{"kind":"Name","value":"pspReference"}},{"kind":"Field","name":{"kind":"Name","value":"checkout"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SourceObject"}}]}},{"kind":"Field","name":{"kind":"Name","value":"order"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SourceObject"}}]}}]}}]}}]} as unknown as DocumentNode<TransactionRefundRequestedSubscription, TransactionRefundRequestedSubscriptionVariables>;
+export const TransactionRefundRequestedDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"TransactionRefundRequested"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"event"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"TransactionRefundRequestedEvent"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"EventMetadata"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Event"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"issuedAt"}},{"kind":"Field","name":{"kind":"Name","value":"recipient"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"OrderGrantedRefund"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"OrderGrantedRefund"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"shippingCostsIncluded"}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"orderLine"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Channel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Channel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"currencyCode"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Address"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Address"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"lastName"}},{"kind":"Field","name":{"kind":"Name","value":"companyName"}},{"kind":"Field","name":{"kind":"Name","value":"postalCode"}},{"kind":"Field","name":{"kind":"Name","value":"countryArea"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress1"}},{"kind":"Field","name":{"kind":"Name","value":"streetAddress2"}},{"kind":"Field","name":{"kind":"Name","value":"phone"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"cityArea"}},{"kind":"Field","name":{"kind":"Name","value":"country"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SourceObject"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"OrderOrCheckout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Checkout"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"totalPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"checkoutVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Order"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"channel"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Channel"}}]}},{"kind":"Field","name":{"kind":"Name","value":"userEmail"}},{"kind":"Field","name":{"kind":"Name","value":"billingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingAddress"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"discount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"shippingPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"total"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"lines"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPrice"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gross"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}}]}},{"kind":"Field","alias":{"kind":"Name","value":"orderVariant"},"name":{"kind":"Name","value":"variant"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sku"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"TransactionRefundRequestedEvent"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"TransactionRefundRequested"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"EventMetadata"}},{"kind":"Field","name":{"kind":"Name","value":"action"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}}]}},{"kind":"Field","name":{"kind":"Name","value":"grantedRefund"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"OrderGrantedRefund"}}]}},{"kind":"Field","name":{"kind":"Name","value":"transaction"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"token"}},{"kind":"Field","name":{"kind":"Name","value":"pspReference"}},{"kind":"Field","name":{"kind":"Name","value":"chargedAmount"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"checkout"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SourceObject"}}]}},{"kind":"Field","name":{"kind":"Name","value":"order"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"SourceObject"}}]}}]}}]}}]} as unknown as DocumentNode<TransactionRefundRequestedSubscription, TransactionRefundRequestedSubscriptionVariables>;

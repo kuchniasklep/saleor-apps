@@ -1,21 +1,25 @@
-import Algoliasearch, { SearchClient } from "algoliasearch";
+import Algoliasearch, { type SearchClient } from "algoliasearch";
 
 import {
-  ProductVariantWebhookPayloadFragment,
-  ProductWebhookPayloadFragment,
+  type CategoryDataFragment,
+  type PageDataFragment,
+  type ProductVariantWebhookPayloadFragment,
+  type ProductWebhookPayloadFragment,
 } from "../../../generated/graphql";
-import { ALGOLIA_TIMEOUT_MS } from "../algolia-timeouts";
+import { env } from "../../env";
 import { isNotNil } from "../isNotNil";
 import { createLogger } from "../logger";
-import { SearchProvider } from "../searchProvider";
+import { type SearchProvider } from "../searchProvider";
 import { createTraceEffect } from "../trace-effect";
 import { ALGOLIA_SLOW_THRESHOLD_MS } from "../trace-effect-thresholds";
 import {
-  AlgoliaObject,
+  type AlgoliaObject,
   channelListingToAlgoliaIndexId,
   productAndVariantToAlgolia,
   productAndVariantToObjectID,
 } from "./algoliaUtils";
+import { categoryToAlgolia, categoryToAlgoliaIndexId } from "./categoryAlgoliaUtils";
+import { pageToAlgolia, pageToAlgoliaIndexId } from "./pageAlgoliaUtils";
 
 export interface AlgoliaSearchProviderOptions {
   appId: string;
@@ -23,6 +27,7 @@ export interface AlgoliaSearchProviderOptions {
   indexNamePrefix?: string;
   channels?: Array<{ slug: string; currencyCode: string }>;
   enabledKeys: string[];
+  pageEnabledKeys: string[];
 }
 
 const logger = createLogger("AlgoliaSearchProvider");
@@ -31,7 +36,10 @@ export class AlgoliaSearchProvider implements SearchProvider {
   #algolia: SearchClient;
   #indexNamePrefix?: string | undefined;
   #indexNames: Array<string>;
+  #categoryIndexName: string;
+  #pageIndexName: string;
   #enabledKeys: string[];
+  #pageEnabledKeys: string[];
 
   #traceSaveObjects = createTraceEffect({
     name: "Algolia saveObjects",
@@ -56,13 +64,17 @@ export class AlgoliaSearchProvider implements SearchProvider {
     indexNamePrefix,
     channels,
     enabledKeys,
+    pageEnabledKeys,
   }: AlgoliaSearchProviderOptions) {
     this.#algolia = Algoliasearch(appId, apiKey); // cspell:disable-line
     this.#indexNamePrefix = indexNamePrefix;
     this.#indexNames =
       channels?.map((c) => channelListingToAlgoliaIndexId({ channel: c }, this.#indexNamePrefix)) ||
       [];
+    this.#categoryIndexName = categoryToAlgoliaIndexId(this.#indexNamePrefix);
+    this.#pageIndexName = pageToAlgoliaIndexId(this.#indexNamePrefix);
     this.#enabledKeys = enabledKeys;
+    this.#pageEnabledKeys = pageEnabledKeys;
   }
 
   private async saveGroupedByIndex(groupedByIndex: GroupedByIndex) {
@@ -73,7 +85,7 @@ export class AlgoliaSearchProvider implements SearchProvider {
         const index = this.#algolia.initIndex(indexName);
 
         return this.#traceSaveObjects(
-          () => index.saveObjects(objects, { timeout: ALGOLIA_TIMEOUT_MS }),
+          () => index.saveObjects(objects, { timeout: env.NEXT_PUBLIC_ALGOLIA_TIMEOUT_MS }),
           { indexName, objectsCount: objects.length },
         );
       }),
@@ -88,7 +100,7 @@ export class AlgoliaSearchProvider implements SearchProvider {
         const index = this.#algolia.initIndex(indexName);
 
         return this.#traceDeleteObjects(
-          () => index.deleteObjects(objectIds, { timeout: ALGOLIA_TIMEOUT_MS }),
+          () => index.deleteObjects(objectIds, { timeout: env.NEXT_PUBLIC_ALGOLIA_TIMEOUT_MS }),
           { indexName, objectIdsCount: objectIds.length },
         );
       }),
@@ -97,43 +109,62 @@ export class AlgoliaSearchProvider implements SearchProvider {
 
   async updateIndicesSettings() {
     logger.debug(`updateIndicesSettings called`);
-    await Promise.all(
-      this.#indexNames.map(async (indexName) => {
-        const index = this.#algolia.initIndex(indexName);
+    await Promise.all([
+      ...this.#indexNames.map((indexName) => this.#updateProductIndexSettings(indexName)),
+      this.#updateCategoryIndexSettings(),
+      this.#updatePageIndexSettings(),
+    ]);
+  }
 
-        return this.#traceSetSettings(
-          () =>
-            index.setSettings({
-              attributesForFaceting: [
-                "productId",
-                "inStock",
-                "categories",
-                "attributes",
-                "collections",
-                "pricing.price.net",
-                "pricing.price.gross",
-                "pricing.discount.net",
-                "pricing.discount.gross",
-                "pricing.priceUndiscounted.net",
-                "pricing.priceUndiscounted.gross",
-                "pricing.onSale",
-              ],
-              attributeForDistinct: "productId",
-              numericAttributesForFiltering: ["grossPrice"],
-              distinct: true,
-              searchableAttributes: [
-                "name",
-                "productName",
-                "variantName",
-                "productType",
-                "category",
-                "descriptionPlaintext",
-                "collections",
-              ],
-            }),
-          { indexName },
-        );
-      }),
+  async #updateProductIndexSettings(indexName: string) {
+    const index = this.#algolia.initIndex(indexName);
+
+    return this.#traceSetSettings(
+      () =>
+        index.setSettings({
+          attributesForFaceting: [
+            "productId",
+            "inStock",
+            "categories",
+            "categoryId",
+            "categorySlug",
+            "productTypeId",
+            "attributes",
+            "collections",
+            "pricing.price.net",
+            "pricing.price.gross",
+            "pricing.discount.net",
+            "pricing.discount.gross",
+            "pricing.priceUndiscounted.net",
+            "pricing.priceUndiscounted.gross",
+            "pricing.onSale",
+          ],
+          attributeForDistinct: "productId",
+          numericAttributesForFiltering: ["grossPrice"],
+          distinct: true,
+          searchableAttributes: [
+            "name",
+            "productName",
+            "variantName",
+            "productType",
+            "productTypeId",
+            "category",
+            "descriptionPlaintext",
+            "collections",
+          ],
+        }),
+      { indexName },
+    );
+  }
+
+  async #updateCategoryIndexSettings() {
+    return this.#traceSetSettings(
+      () =>
+        this.#algolia.initIndex(this.#categoryIndexName).setSettings({
+          attributesForFaceting: ["level", "ancestors", "metadata"],
+          searchableAttributes: ["name", "slug", "ancestors"],
+        }),
+      { indexName: this.#categoryIndexName },
     );
   }
 
@@ -165,7 +196,7 @@ export class AlgoliaSearchProvider implements SearchProvider {
     await Promise.all(product.variants.map((variant) => this.updateProductVariant(variant)));
   }
 
-  async deleteProduct(product: ProductWebhookPayloadFragment) {
+  async deleteProduct(product: Pick<ProductWebhookPayloadFragment, "id">) {
     logger.debug(`deleteProduct`);
 
     await Promise.all(
@@ -176,7 +207,7 @@ export class AlgoliaSearchProvider implements SearchProvider {
           () =>
             index.deleteBy(
               { filters: `productId:"${product.id}"` },
-              { timeout: ALGOLIA_TIMEOUT_MS },
+              { timeout: env.NEXT_PUBLIC_ALGOLIA_TIMEOUT_MS },
             ),
           { indexName, productId: product.id },
         );
@@ -221,13 +252,104 @@ export class AlgoliaSearchProvider implements SearchProvider {
     }
   }
 
-  async deleteProductVariant(productVariant: ProductVariantWebhookPayloadFragment) {
+  async deleteProductVariant(productVariant: { id: string; product: { id: string } }) {
     logger.debug(`deleteProductVariant called`);
 
     await this.deleteGroupedByIndex(
       Object.fromEntries(
         this.#indexNames.map((index) => [index, [productAndVariantToObjectID(productVariant)]]),
       ),
+    );
+  }
+
+  async createCategory(category: CategoryDataFragment) {
+    logger.debug(`createCategory called`);
+    await this.updateCategory(category);
+  }
+
+  async updateCategory(category: CategoryDataFragment) {
+    logger.debug(`updateCategory called`);
+
+    const algoliaObject = categoryToAlgolia(category);
+    const index = this.#algolia.initIndex(this.#categoryIndexName);
+
+    await this.#traceSaveObjects(
+      () => index.saveObjects([algoliaObject], { timeout: env.NEXT_PUBLIC_ALGOLIA_TIMEOUT_MS }),
+      { indexName: this.#categoryIndexName, objectsCount: 1 },
+    );
+  }
+
+  async deleteCategory(categoryId: string) {
+    logger.debug(`deleteCategory called`);
+
+    const index = this.#algolia.initIndex(this.#categoryIndexName);
+
+    await this.#traceDeleteObjects(
+      () => index.deleteObjects([categoryId], { timeout: env.NEXT_PUBLIC_ALGOLIA_TIMEOUT_MS }),
+      { indexName: this.#categoryIndexName, objectIdsCount: 1 },
+    );
+  }
+
+  async updatedBatchCategories(categoriesBatch: CategoryDataFragment[]) {
+    logger.debug(`updatedBatchCategories called`);
+
+    const algoliaObjects = categoriesBatch.map(categoryToAlgolia);
+    const index = this.#algolia.initIndex(this.#categoryIndexName);
+
+    await this.#traceSaveObjects(
+      () => index.saveObjects(algoliaObjects, { timeout: env.NEXT_PUBLIC_ALGOLIA_TIMEOUT_MS }),
+      { indexName: this.#categoryIndexName, objectsCount: algoliaObjects.length },
+    );
+  }
+
+  async createPage(page: PageDataFragment) {
+    logger.debug(`createPage called`);
+    await this.updatePage(page);
+  }
+
+  async updatePage(page: PageDataFragment) {
+    logger.debug(`updatePage called`);
+
+    const algoliaObject = pageToAlgolia(page, this.#pageEnabledKeys);
+    const index = this.#algolia.initIndex(this.#pageIndexName);
+
+    await this.#traceSaveObjects(
+      () => index.saveObjects([algoliaObject], { timeout: env.NEXT_PUBLIC_ALGOLIA_TIMEOUT_MS }),
+      { indexName: this.#pageIndexName, objectsCount: 1 },
+    );
+  }
+
+  async deletePage(pageId: string) {
+    logger.debug(`deletePage called`);
+
+    const index = this.#algolia.initIndex(this.#pageIndexName);
+
+    await this.#traceDeleteObjects(
+      () => index.deleteObjects([pageId], { timeout: env.NEXT_PUBLIC_ALGOLIA_TIMEOUT_MS }),
+      { indexName: this.#pageIndexName, objectIdsCount: 1 },
+    );
+  }
+
+  async updatedBatchPages(pagesBatch: PageDataFragment[]) {
+    logger.debug(`updatedBatchPages called`);
+
+    const algoliaObjects = pagesBatch.map((page) => pageToAlgolia(page, this.#pageEnabledKeys));
+    const index = this.#algolia.initIndex(this.#pageIndexName);
+
+    await this.#traceSaveObjects(
+      () => index.saveObjects(algoliaObjects, { timeout: env.NEXT_PUBLIC_ALGOLIA_TIMEOUT_MS }),
+      { indexName: this.#pageIndexName, objectsCount: algoliaObjects.length },
+    );
+  }
+
+  async #updatePageIndexSettings() {
+    return this.#traceSetSettings(
+      () =>
+        this.#algolia.initIndex(this.#pageIndexName).setSettings({
+          attributesForFaceting: ["pageTypeId", "metadata", "attributes"],
+          searchableAttributes: ["title", "slug", "seoTitle", "contentPlaintext"],
+        }),
+      { indexName: this.#pageIndexName },
     );
   }
 }

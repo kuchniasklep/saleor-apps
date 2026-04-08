@@ -1,34 +1,35 @@
-import { SaleorApiUrl } from "@saleor/apps-domain/saleor-api-url";
-import { BaseError } from "@saleor/errors";
-import { err, ok, Result } from "neverthrow";
-import { Client } from "urql";
+import { type SaleorApiUrl } from "@saleor/apps-domain/saleor-api-url";
+import { err, fromThrowable, ok, type Result } from "neverthrow";
+import { type Client } from "urql";
 
-import { FulfillmentTrackingNumberUpdatedEventFragment } from "@/generated/graphql";
+import { InvalidEventValidationError } from "@/app/api/webhooks/saleor/use-case-errors";
+import { type FulfillmentTrackingNumberUpdatedEventFragment } from "@/generated/graphql";
 import { createLogger } from "@/lib/logger";
-import { AppConfigRepo } from "@/modules/app-config/repo/app-config-repo";
+import { type AppConfigRepo } from "@/modules/app-config/repo/app-config-repo";
 import { createAtobaraiFulfillmentReportPayload } from "@/modules/atobarai/api/atobarai-fulfillment-report-payload";
-import { IAtobaraiApiClientFactory } from "@/modules/atobarai/api/types";
+import { type IAtobaraiApiClientFactory } from "@/modules/atobarai/api/types";
 import {
-  AtobaraiShippingCompanyCode,
+  type AtobaraiShippingCompanyCode,
+  AtobaraiShippingCompanyCodeValidationError,
   createAtobaraiShippingCompanyCode,
 } from "@/modules/atobarai/atobarai-shipping-company-code";
 import { createAtobaraiTransactionId } from "@/modules/atobarai/atobarai-transaction-id";
-import { IOrderNoteService } from "@/modules/saleor/order-note-service";
+import { type IOrderNoteService } from "@/modules/saleor/order-note-service";
 import { TransactionRecord } from "@/modules/transactions-recording/transaction-record";
-import { TransactionRecordRepo } from "@/modules/transactions-recording/types";
+import { type TransactionRecordRepo } from "@/modules/transactions-recording/types";
 
 import { BaseUseCase } from "../base-use-case";
-import {
-  AppIsNotConfiguredResponse,
-  BrokenAppResponse,
-  MalformedRequestResponse,
-} from "../saleor-webhook-responses";
+import { type AppIsNotConfiguredResponse, BrokenAppResponse } from "../saleor-webhook-responses";
 import { FulfillmentTrackingNumberUpdatedUseCaseResponse } from "./use-case-response";
+
+export type TransactionValidationCause =
+  | "NO_COMPLETED_TRANSACTIONS"
+  | "MULTIPLE_COMPLETED_TRANSACTIONS";
 
 type UseCaseExecuteResult = Promise<
   Result<
     FulfillmentTrackingNumberUpdatedUseCaseResponse,
-    AppIsNotConfiguredResponse | MalformedRequestResponse | BrokenAppResponse
+    AppIsNotConfiguredResponse | BrokenAppResponse
   >
 >;
 
@@ -68,9 +69,7 @@ export class FulfillmentTrackingNumberUpdatedUseCase extends BaseUseCase {
         },
       });
 
-      return err(
-        new MalformedRequestResponse(new BaseError("Fulfillment tracking number is missing")),
-      );
+      return err(new InvalidEventValidationError("Fulfillment tracking number is missing"));
     }
 
     if (!event.order?.transactions?.length) {
@@ -80,52 +79,55 @@ export class FulfillmentTrackingNumberUpdatedUseCase extends BaseUseCase {
         },
       });
 
-      return err(new MalformedRequestResponse(new BaseError("Order transactions are missing")));
+      return err(new InvalidEventValidationError("Order transactions are missing"));
     }
 
-    if (event.order.transactions.length > 1) {
-      // App support only single transaction per order / checkout. This is a limitation of how we send goods to Atobarai. If there are multiple transactions, we would need to report goods prices minus prices from other transactions.
-      this.logger.warn("Multiple transactions found for the order", {
+    const completedTransactions = event.order.transactions.filter((t) =>
+      t.events.some((e) => e.type === "CHARGE_SUCCESS" || e.type === "AUTHORIZATION_SUCCESS"),
+    );
+
+    if (completedTransactions.length === 0) {
+      this.logger.warn("No completed transactions found for the order", {
         event: { orderId: event.order.id },
       });
 
       return err(
-        new MalformedRequestResponse(new BaseError("Multiple transactions found for the order")),
+        new InvalidEventValidationError("No completed transactions found for the order", {
+          props: {
+            validationCause: "NO_COMPLETED_TRANSACTIONS" as TransactionValidationCause,
+          },
+        }),
       );
     }
 
-    const transaction = event.order.transactions[0];
+    const ownedCompletedTransactions = completedTransactions.filter(
+      (t) => t.createdBy?.__typename === "App" && t.createdBy.id === appId,
+    );
 
-    if (transaction.createdBy?.__typename !== "App") {
-      this.logger.warn("Transaction was not created by the app. Skipping.", {
-        event: {
-          orderId: event.order.id,
-          transactionPspReference: transaction.pspReference,
-          createdBy: transaction.createdBy?.__typename,
-        },
+    if (ownedCompletedTransactions.length === 0) {
+      this.logger.info("No completed transactions owned by this app. Skipping.", {
+        event: { orderId: event.order.id },
+      });
+
+      return err(new InvalidEventValidationError("Transaction was not created by the app"));
+    }
+
+    if (completedTransactions.length > 1) {
+      // App supports only single transaction per order / checkout. This is a limitation of how we send goods to Atobarai.
+      this.logger.warn("Multiple completed transactions found for the order", {
+        event: { orderId: event.order.id },
       });
 
       return err(
-        new MalformedRequestResponse(new BaseError("Transaction was not created by the app")),
+        new InvalidEventValidationError("Multiple completed transactions found for the order", {
+          props: {
+            validationCause: "MULTIPLE_COMPLETED_TRANSACTIONS" as TransactionValidationCause,
+          },
+        }),
       );
     }
 
-    if (transaction.createdBy.id !== appId) {
-      this.logger.warn("Transaction was not created by the current app installation. Skipping.", {
-        event: {
-          orderId: event.order.id,
-          transactionPspReference: transaction.pspReference,
-          appId,
-          transactionCreatedById: transaction.createdBy.id,
-        },
-      });
-
-      return err(
-        new MalformedRequestResponse(
-          new BaseError("Transaction was not created by the current app installation"),
-        ),
-      );
-    }
+    const transaction = ownedCompletedTransactions[0];
 
     return ok({
       orderId: event.order.id,
@@ -137,16 +139,22 @@ export class FulfillmentTrackingNumberUpdatedUseCase extends BaseUseCase {
 
   private resolveAtobaraiPDCompanyCodeFromMetadata(
     event: FulfillmentTrackingNumberUpdatedEventFragment,
-  ): AtobaraiShippingCompanyCode | null {
+  ): Result<
+    AtobaraiShippingCompanyCode | null,
+    InstanceType<typeof AtobaraiShippingCompanyCodeValidationError>
+  > {
     if (event.fulfillment?.atobaraiPDCompanyCode) {
       this.logger.info("Using Atobarai PD company code from private metadata", {
         atobaraiPDCompanyCode: event.fulfillment.atobaraiPDCompanyCode,
       });
 
-      return createAtobaraiShippingCompanyCode(event.fulfillment.atobaraiPDCompanyCode);
+      return fromThrowable(
+        createAtobaraiShippingCompanyCode,
+        AtobaraiShippingCompanyCodeValidationError.normalize,
+      )(event.fulfillment.atobaraiPDCompanyCode);
     }
 
-    return null;
+    return ok(null);
   }
 
   async execute(params: {
@@ -160,7 +168,28 @@ export class FulfillmentTrackingNumberUpdatedUseCase extends BaseUseCase {
     const parsingResult = this.parseEvent({ event, appId });
 
     if (parsingResult.isErr()) {
-      return err(parsingResult.error);
+      const validationCause = (
+        parsingResult.error as { validationCause?: TransactionValidationCause }
+      ).validationCause;
+
+      if (event.order?.id && validationCause) {
+        await this.addOrderNote({
+          orderId: event.order.id,
+          graphqlClient,
+          message: `NP Atobarai skipped fulfillment reporting: ${parsingResult.error.message}`,
+        });
+      }
+
+      return ok(
+        new FulfillmentTrackingNumberUpdatedUseCaseResponse.Failure(
+          new InvalidEventValidationError("Failed to parse Saleor event", {
+            cause: parsingResult.error,
+            props: {
+              publicMessage: parsingResult.error.message,
+            },
+          }),
+        ),
+      );
     }
 
     const { orderId, channelId, pspReference, trackingNumber } = parsingResult.value;
@@ -182,14 +211,27 @@ export class FulfillmentTrackingNumberUpdatedUseCase extends BaseUseCase {
       atobaraiEnvironment: atobaraiConfigResult.value.useSandbox ? "sandbox" : "production",
     });
 
-    const metadataShippingCompanyCode = this.resolveAtobaraiPDCompanyCodeFromMetadata(event);
+    const metadataShippingCompanyCodeResult = this.resolveAtobaraiPDCompanyCodeFromMetadata(event);
+
+    if (metadataShippingCompanyCodeResult.isErr()) {
+      return ok(
+        new FulfillmentTrackingNumberUpdatedUseCaseResponse.Failure(
+          new InvalidEventValidationError(metadataShippingCompanyCodeResult.error.message, {
+            cause: metadataShippingCompanyCodeResult.error,
+            props: {
+              publicMessage: metadataShippingCompanyCodeResult.error.message,
+            },
+          }),
+        ),
+      );
+    }
 
     const reportFulfillmentResult = await apiClient.reportFulfillment(
       createAtobaraiFulfillmentReportPayload({
         trackingNumber,
         atobaraiTransactionId: createAtobaraiTransactionId(pspReference),
         shippingCompanyCode:
-          metadataShippingCompanyCode || atobaraiConfigResult.value.shippingCompanyCode,
+          metadataShippingCompanyCodeResult.value || atobaraiConfigResult.value.shippingCompanyCode,
       }),
       {
         rejectMultipleResults: true,
@@ -229,7 +271,7 @@ export class FulfillmentTrackingNumberUpdatedUseCase extends BaseUseCase {
     const appTransaction = new TransactionRecord({
       atobaraiTransactionId,
       saleorTrackingNumber: trackingNumber,
-      fulfillmentMetadataShippingCompanyCode: metadataShippingCompanyCode,
+      fulfillmentMetadataShippingCompanyCode: metadataShippingCompanyCodeResult.value,
     });
 
     const updateTransactionResult = await this.transactionRecordRepo.updateTransaction(

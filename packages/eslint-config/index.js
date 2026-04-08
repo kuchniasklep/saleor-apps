@@ -102,6 +102,14 @@ export const config = [
           ignoreRestSiblings: true,
         },
       ],
+      "@typescript-eslint/consistent-type-imports": [
+        "warn",
+        {
+          prefer: "type-imports",
+          fixStyle: "inline-type-imports",
+          disallowTypeAnnotations: true,
+        },
+      ],
     },
   },
   {
@@ -126,6 +134,7 @@ export const config = [
     },
     rules: {
       ...reactPlugin.configs.recommended.rules,
+      ...reactHooksPlugin.configs.recommended.rules,
       "react/react-in-jsx-scope": "off",
       "react/jsx-key": "off",
     },

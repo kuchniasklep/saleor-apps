@@ -1,5 +1,140 @@
 # saleor-app-payment-np-atobarai
 
+## 1.4.4
+
+### Patch Changes
+
+- b33bd4e: Fixed fulfillment-tracking-number-updated handler and changed order of validation. Now app will quit if transactions don't include app's own transactions quietly. Previously app was reporting warning for multiple transactions, even if none of them was created by Atobarai
+
+## 1.4.3
+
+### Patch Changes
+
+- 622d13c: Updated GraphQL schema to 3.23
+
+## 1.4.2
+
+### Patch Changes
+
+- 77e64cb: Fixed fulfillment webhook failing for orders with "ghost" transactions. Previously, the app rejected any order with more than one Saleor transaction. Now it filters transactions by status, keeping only those with CHARGE_SUCCESS or AUTHORIZATION_SUCCESS events, and proceeds if exactly one completed transaction exists. Added order notes when fulfillment reporting is skipped due to missing or multiple completed transactions.
+
+## 1.4.1
+
+### Patch Changes
+
+- 3ecde04: Updated @saleor/app-sdk to v1.7.1
+- b57266c: Attach Saleor domain to Sentry events for better aggregation
+- Updated dependencies [3ecde04]
+  - @saleor/apps-domain@1.0.3
+  - @saleor/dynamo-config-repository@1.0.3
+  - @saleor/errors@1.0.2
+  - @saleor/apps-logger@1.6.4
+  - @saleor/apps-otel@2.4.1
+  - @saleor/react-hook-form-macaw@0.2.17
+  - @saleor/sentry-utils@0.2.6
+  - @saleor/apps-shared@1.14.3
+  - @saleor/apps-trpc@4.0.5
+  - @saleor/apps-ui@1.3.3
+
+## 1.4.0
+
+### Minor Changes
+
+- fab1f78: Webhook responses now return plain text response to Saleor, so it should be properly displayed in dashboard "webhook errors". Previously app was returning `{"message": "..."}` which is not recognized shape officially by Saleor nor Dashboard - it was rendered like text anyway.
+
+### Patch Changes
+
+- 0484f64: Add error cause for verifyJwt failures on tRPC
+- 8cc005b: Updated aws-sdk packages and dynamodb-toolbox to latest versions
+
+## 1.3.7
+
+### Patch Changes
+
+- ddfa9593: Changed how generated graphql->typescript types work. Now only types that are directly or indirectly connected to written documents (mutations, queries) are generated
+
+## 1.3.6
+
+### Patch Changes
+
+- d9bb00f5: GraphQL schema has been refreshed to use latest 3.22 (this updates schema but does not change which APIs are executed)
+- c1cbffb4: Applied "consistent imports" rule from ESLint to ensure type-only imports are marked with `import type` clause. This should improve tree shaking and reduce side effects
+- dec95470: Removed nested graphql.schema files for each app/package and added root schema. Now all packages have symlink pointing to the same file.
+- Updated dependencies [f0d36e14]
+  - @saleor/apps-shared@1.14.2
+  - @saleor/apps-trpc@4.0.4
+  - @saleor/apps-domain@1.0.2
+  - @saleor/dynamo-config-repository@1.0.2
+  - @saleor/errors@1.0.1
+  - @saleor/apps-logger@1.6.3
+  - @saleor/apps-otel@2.4.0
+  - @saleor/react-hook-form-macaw@0.2.16
+  - @saleor/apps-ui@1.3.2
+
+## 1.3.5
+
+### Patch Changes
+
+- d7ce7f67: Added client-side error capturing so client exceptions are reported to Sentry.
+
+## 1.3.4
+
+### Patch Changes
+
+- 07057788: Update DynamoDB/AWS & Toolbox dependencies
+
+## 1.3.3
+
+### Patch Changes
+
+- d5d7a4fe: Introduced lib t3-oss/env, which adds build-time env variables validation. Now all env variables are statically declared and exposed type-safe way
+- 6e5f69c5: Added max DynamoDB connection and request limits (2s for connection, 5s for request), so in case of downtime, app will terminate earlier
+
+## 1.3.2
+
+### Patch Changes
+
+- 9c46f935: Changed refund logic that improperly matched refunds - now it uses transaction total instead order total to decide if refund is full
+
+## 1.3.1
+
+### Patch Changes
+
+- 560c3de4: Added logging to DynamoDB APL for better debugging and error visibility.
+
+## 1.3.0
+
+### Minor Changes
+
+- 0c477d55: Added granular error handling, which will return more precise error messages in cases of errors. Also many errors were handled, meaning "status 200" will be returned in case of valid event, that misses necessary data like payload required to process the request. Previously it was not handled and caused "status 500" reported to Saleor.
+
+### Patch Changes
+
+- 1577f747: Added more verbose error for sdk webhook execution, this should help debugging early request validation
+- 2a4f27ad: Fixed how AWS sdk is initialized by explicitly passing credentials. This is caused by Vercel issue, which started to implicitly override some of our credentials by injecting their own.
+
+## 1.2.9
+
+### Patch Changes
+
+- 214974b2: Fixed Zod validation errors raising exceptions. Validation errors in customer data, delivery destination, and money fields now return warnings instead of throwing exceptions, preventing HTTP 500 responses to Saleor webhooks.
+- 214974b2: Renamed `MalformedRequestResponse` to `InvalidEventDataResponse` to better reflect its purpose. This response is used for validation errors in event data, not malformed payloads.
+
+## 1.2.8
+
+### Patch Changes
+
+- 204d4889: Fixed HTTP 500 errors when customer data (email, phone, billing address) is missing.
+  These validation errors now return HTTP 202 instead, preventing Saleor webhook circuit breaker from disabling payment webhooks.
+- c5850b91: Zod validation errors will no longer cause app to throw unexpected exception, and instead will be properly handled.
+  Previously they were not caught and caused app to send `logger.error`
+
+## 1.2.7
+
+### Patch Changes
+
+- e2eb32bb: Additionally print warning logs for raw Atobarai responses
+
 ## 1.2.6
 
 ### Patch Changes

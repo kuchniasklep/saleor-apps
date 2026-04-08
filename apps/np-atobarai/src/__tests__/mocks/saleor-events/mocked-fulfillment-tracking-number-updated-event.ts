@@ -1,4 +1,4 @@
-import { FulfillmentTrackingNumberUpdatedEventFragment } from "@/generated/graphql";
+import { type FulfillmentTrackingNumberUpdatedEventFragment } from "@/generated/graphql";
 
 import { mockedAtobaraiTransactionId } from "../atobarai/mocked-atobarai-transaction-id";
 import { mockedSaleorAppId } from "../saleor/mocked-saleor-app-id";
@@ -19,6 +19,7 @@ export const mockedFulfillmentTrackingNumberUpdatedEvent = {
     transactions: [
       {
         pspReference: mockedAtobaraiTransactionId,
+        events: [{ type: "CHARGE_SUCCESS" as const }],
         createdBy: {
           __typename: "App",
           id: mockedSaleorAppId,

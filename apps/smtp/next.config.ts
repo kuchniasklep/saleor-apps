@@ -1,5 +1,5 @@
 import { withSentryConfig } from "@sentry/nextjs";
-import { NextConfig } from "next";
+import { type NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   ...(process.env.DEVELOPMENT_OUTPUT ? {} : { output: "standalone" }),
@@ -23,6 +23,10 @@ const nextConfig: NextConfig = {
      */
     "handlebars",
     "handlebars-helpers",
+    "@aws-sdk/client-dynamodb",
+    "@aws-sdk/lib-dynamodb",
+    "@aws-sdk/util-dynamodb",
+    "dynamodb-toolbox",
   ],
   webpack: (config, { isServer }) => {
     if (isServer) {
