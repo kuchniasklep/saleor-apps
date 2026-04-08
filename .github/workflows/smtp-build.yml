@@ -41,6 +41,7 @@ jobs:
         build-args: |
           TARGET_APP=saleor-app-smtp
           TARGET_APP_DIRECTORY=smtp
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
         tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
