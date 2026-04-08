@@ -26,6 +26,7 @@ export const env = createEnv({
     VERCEL_ENV: z.string().optional(),
     REPOSITORY_URL: z.string().optional(),
     NEXT_RUNTIME: z.string().optional(),
+    REDIS_URL: z.string().optional(),
     /**
      * Fill these to enable fallback behavior - if app is not configured, these settings can be used.
      * Be careful to fill all of them, otherwise it will not be used
@@ -67,6 +68,7 @@ export const env = createEnv({
     VERCEL_ENV: process.env.VERCEL_ENV,
     REPOSITORY_URL: process.env.REPOSITORY_URL,
     NEXT_RUNTIME: process.env.NEXT_RUNTIME,
+    REDIS_URL: process.env.REDIS_URL,
     FALLBACK_SMTP_HOST: process.env.FALLBACK_SMTP_HOST,
     FALLBACK_SMTP_PORT: process.env.FALLBACK_SMTP_PORT,
     FALLBACK_SMTP_USER: process.env.FALLBACK_SMTP_USER,

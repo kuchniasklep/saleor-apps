@@ -47,7 +47,7 @@ switch (aplType) {
     break;
 
   case "redis": {
-    const redisClient = new Redis(process.env.REDIS_URL!, { maxRetriesPerRequest: null });
+    const redisClient = new Redis(env.REDIS_URL!, { maxRetriesPerRequest: null });
 
     apl = new RedisAPL({ client: redisClient, hashCollectionKey: "saleor_app_smtp" });
 
