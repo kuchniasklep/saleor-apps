@@ -1,4 +1,4 @@
-import { APL, AplConfiguredResult, AplReadyResult, AuthData } from "@saleor/app-sdk/APL";
+import { type APL, type AplConfiguredResult, type AplReadyResult, type AuthData } from "@saleor/app-sdk/APL";
 import type { Redis } from "ioredis";
 
 // Based on the RedisAPL implementation by https://github.com/JannikZed

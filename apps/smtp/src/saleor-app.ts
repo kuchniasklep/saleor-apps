@@ -5,9 +5,9 @@ import { UpstashAPL } from "@saleor/app-sdk/APL/upstash";
 import { SaleorApp } from "@saleor/app-sdk/saleor-app";
 import Redis from "ioredis";
 
-import { RedisAPL } from "./lib/redis-apl";
 import { env } from "./env";
 import { getDynamoEnv } from "./env-dynamodb";
+import { RedisAPL } from "./lib/redis-apl";
 import { createLogger } from "./logger";
 import { createDynamoMainTable } from "./modules/dynamodb/dynamo-main-table";
 
